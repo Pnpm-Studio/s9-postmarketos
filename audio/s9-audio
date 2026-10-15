@@ -35,6 +35,7 @@ apply)
 		amixer -q -c0 cset name='HPOUT2 Digital Switch' 0
 		echo off; exit 0
 	fi
+	[ -r $XML ] || { echo "no $XML (copy it from stock vendor, see README): audio skipped"; exit 0; }
 	feed
 	python3 $LIB/mixer-path.py $XML | sh 2>/dev/null
 	python3 $LIB/mixer-path.py $XML media-$OUT | sh 2>/dev/null
