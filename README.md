@@ -12,12 +12,12 @@ The on-phone touch UI (`display/display.py`): boot logo and tab tour, and every 
 
 ![Web dashboard](docs/web-dashboard.png)
 
-LLM: the image ships llama.cpp (`s9-llama-vk`, run with `mali-run`; bring your own model) with our patch to make it somewhat Mali-compatible, build steps and model link in [llm/README.md](llm/README.md); speed in [docs/llm-bench.md](docs/llm-bench.md).
-
 - `dashboard/server.py` serves `/` and `/api/status` on `0.0.0.0:8090`. Only write action: same-origin POST to kill the user's own processes.
 - Shows battery (max77705), CPU per core + LITTLE/big clocks + busy % (load average is ~13 permanently because of D-state kernel threads), Mali-G72 clock/governor/load, thermal zones (BIG, LITTLE, G3D), memory, storage, Wi-Fi link, Bluetooth, SSH (dropbear), USB, processes.
 - Install: `sh deploy.sh [ssh-host]` -> `/opt/s9-dashboard`, OpenRC service `s9-dashboard` (supervise-daemon, runlevel default, log `/var/log/s9-dashboard.log`).
 - Self-checks: `python3 dashboard/battery.py`, `services.py`.
+
+LLM: the image ships llama.cpp (`s9-llama-vk`, run with `mali-run`; bring your own model) with our patch to make it somewhat Mali-compatible, build steps and model link in [llm/README.md](llm/README.md); speed in [docs/llm-bench.md](docs/llm-bench.md).
 
 ## Status
 
