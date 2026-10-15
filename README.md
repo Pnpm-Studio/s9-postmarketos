@@ -58,7 +58,7 @@ Experimental; tested end to end on one SM-G960F.
 ## Build the image from scratch
 
 Needs [pmbootstrap](https://docs.postmarketos.org/pmbootstrap/) and a pmaports checkout with the kernel
-`device/archived/linux-samsung-starlte` (our patches) and `main/s9-*` (written by the stage scripts).
+`device/archived/linux-samsung-starlte` (copy [`kernel/`](kernel/README.md) there: APKBUILD, config, all 15 patches) and `main/s9-*` (written by the stage scripts).
 `<W>` is the pmbootstrap workdir (default `~/projects/oldphones/s9`).
 
 1. `pmbootstrap.cfg` in `<W>` (no `user`, no `ssh_keys`: the image ships `user` / `changeme` and no keys):

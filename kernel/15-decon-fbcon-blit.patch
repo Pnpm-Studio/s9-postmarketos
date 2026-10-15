@@ -1,0 +1,21 @@
+--- a/drivers/video/fbdev/exynos/dpu_9810/decon_core.c
++++ b/drivers/video/fbdev/exynos/dpu_9810/decon_core.c
+@@ -3043,6 +3043,8 @@
+ 	.fb_blank	= decon_blank,
+ 	.fb_setcolreg	= decon_setcolreg,
+ 	.fb_fillrect    = cfb_fillrect,
++	.fb_copyarea    = cfb_copyarea,
++	.fb_imageblit   = cfb_imageblit,
+ #ifdef CONFIG_COMPAT
+ 	.fb_compat_ioctl = decon_compat_ioctl,
+ #endif
+--- a/drivers/video/fbdev/exynos/dpu_9810/decon_dsi.c
++++ b/drivers/video/fbdev/exynos/dpu_9810/decon_dsi.c
+@@ -843,7 +843,6 @@
+ 	struct decon_device *decon = win->decon;
+ 	unsigned int val;
+ 
+-	printk("@@@@ %s\n", __func__);
+ 	decon_dbg("%s: win %d: %d => rgb=%d/%d/%d\n", __func__, win->idx,
+ 			regno, red, green, blue);
+ 
