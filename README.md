@@ -35,7 +35,7 @@ Tested on one SM-G960F: a fresh install of the release image via the web flasher
 | Overclock | working | opt-in behind two warnings, off by default |
 | llama.cpp (CPU) | working | ~5 t/s on 4 big cores; bring your own model |
 | llama.cpp (GPU, Vulkan) | partly | runs, but slower than the CPU (~1 t/s) |
-| Audio (speaker) | not in image | works with the phone's own stock audio firmware, which is not redistributed |
+| Audio (speaker) | works | stock Samsung DSP firmware bundled as `s9-audio-fw` |
 | Reboot on freeze | not tested | no real lockup triggered yet |
 | Web flasher, release image first boot | working | fresh install on one SM-G960F |
 | TWRP zip | not tested | |
@@ -65,7 +65,7 @@ Needs [pmbootstrap](https://docs.postmarketos.org/pmbootstrap/) and a pmaports c
    aports = <W>/pmaports
    work = <W>/work
    device = samsung-starlte
-   extra_packages = s9-server,device-samsung-starlte-nonfree-firmware,s9-llama-vk
+   extra_packages = s9-server,device-samsung-starlte-nonfree-firmware,s9-llama-vk,s9-audio-fw
    boot_size = 512
    hostname = s9
    service_manager = openrc
@@ -73,8 +73,8 @@ Needs [pmbootstrap](https://docs.postmarketos.org/pmbootstrap/) and a pmaports c
    ```
 2. Stage the packages: `sh pkg/s9-server/stage.sh <W>`; `sh pkg/s9-mali/stage.sh <W>` (needs the stock
    G960FXXUHFVG4 blobs in `<W>/android-blobs`); `sh pkg/s9-llama-vk/stage.sh <W>` (needs the NDK build, see
-   [llm/README.md](llm/README.md)).
-3. Build: `pmbootstrap build linux-samsung-starlte s9-mali s9-llama-vk s9-server --force`.
+   [llm/README.md](llm/README.md)); `sh pkg/s9-audio-fw/stage.sh <W>` (same stock blobs).
+3. Build: `pmbootstrap build linux-samsung-starlte s9-mali s9-llama-vk s9-audio-fw s9-server --force`.
 4. Install: `pmbootstrap install --split --password changeme` (the boot partition goes to VENDOR, the rootfs to SYSTEM).
 5. Pack: `sh pkg/s9-server/make-zip.sh <W>` → `<W>/out/`: `boot.img`, `samsung-starlte-root.img`,
    `samsung-starlte-boot.img`, `SHA256SUMS`, and the TWRP zips (`s9-server-twrp.zip`; `-srv` also formats USERDATA for `/srv`).
@@ -84,16 +84,17 @@ Shell: `shell/skel` (bash, starship, ble.sh, fzf) goes to `/etc/skel`, ble.sh to
 The `s9-shell-env` boot service gives every login user that setup and bash as login shell (own `~/.bashrc` files are left alone).
 Overclock is off until turned on (behind two warnings) on the phone's CPU & GPU limits page.
 
-Not in the image: the LLM model, Wi-Fi credentials, SSH keys, and the stock Samsung audio firmware (`calliope_*`,
-`*_AUDIO_SLSI`, `dsm*`, `mixer_paths.xml`); speaker audio needs those copied from your own stock ROM.
+Not in the image: the LLM model, Wi-Fi credentials and SSH keys.
 
 ## Framebuffer touch UI (`display/`)
 
-`display/display.py` draws the status pages (Overview, Processes, Network, Thermals & perf, Power) on `/dev/fb0` (mmap, native 1440x2960 RGBX, ~115 ms/frame) from the dashboard's `/api/status`. Touch: `sec_touchscreen` (ABS 0..4095 scaled to the layout); power key (`gpio_keys`, grabbed so acpid cannot power off) toggles the screen via `bl_power`; volume keys scroll the process list. Reboot/Shut down need a confirm tap.
+`display/display.py` draws the status pages (Overview, Processes, Network, Thermals & perf, Power) on `/dev/fb0` (mmap, native 1440x2960 RGBX, ~115 ms/frame) from the dashboard's `/api/status`. Touch: `sec_touchscreen` (ABS 0..4095 scaled to the layout); power key (`gpio_keys`, grabbed so acpid cannot power off) cycles **console → dashboard → off** (a tap while off wakes to the console); volume keys scroll the process list. Reboot/Shut down need a confirm tap.
 
 Deploy: `sh display/deploy.sh [host]` (needs `apk add py3-pillow py3-pyte font-opensans font-droid font-nerd-fonts-symbols`; installs to `/usr/local/lib/s9-display`, service `s9-display`, runs as root, log `/var/log/s9-display.log`; leave `msm-fb-refresher` running). Checks: `python3 display.py --selftest`, `--preview out.png`, `--readback out.png` (reads fb0 back).
 
-**Terminal tab** (6th tab): the kernel has no fbcon, so the UI hosts a pyte terminal backed by `/bin/login -f <user>` (autologin; the root display service starts it). The session survives tab switches and screen blanking, and respawns after logout. Ordinary text uses DroidSansMono; Starship icons use the installed Nerd Font mono symbols. **Rotate 90°** rotates output and keyboard while navigation stays fixed. **Hide keyboard** gives output more space; either control resizes the active PTY. Drag over output for row-by-row scrollback with a short coast, or use volume keys for paging. Battery & power → Terminal options controls display-only kernel-message filters (Knox, disk probes, network devices, USB addresses, USB driver, Wi-Fi driver/DHCP; all hidden by default); full kernel logs remain available. The battery page also controls the wireless receiver and remembers its setting. Keyboard taps include letters/shift, digits, symbol pages, Esc, Tab, one-shot Ctrl, arrows, Enter and Del. Checks: `display.py --selftest`; `sudo display.py --selftest-terminal out.png` exercises an autologin PTY and framebuffer readback.
+**Console (tty1):** the kernel has fbcon (patched decon blit ops); tty1 autologins `user` in Terminus 32 with `buffyboard` as touch keyboard; the boot screen. The dashboard runs on tty7.
+
+**Terminal tab** (6th tab): a pyte terminal backed by `/bin/login -f <user>` (autologin; the root display service starts it). The session survives tab switches and screen blanking, and respawns after logout. Ordinary text uses DroidSansMono; Starship icons use the installed Nerd Font mono symbols. The keyboard is `buffyboard` docked above the tabs (display.py leaves that strip of the framebuffer to it and reads its uinput keys); **Rotate 90°** rotates the output and falls back to the drawn keyboard. **Hide keyboard** gives output more space; either control resizes the active PTY. Drag over output for row-by-row scrollback with a short coast, or use volume keys for paging. Battery & power → Terminal options controls display-only kernel-message filters (Knox, disk probes, panel already-on, network devices, USB addresses, USB driver, Wi-Fi driver/DHCP; all hidden by default); full kernel logs remain available. The battery page also controls the wireless receiver and remembers its setting. Keyboard taps include letters/shift, digits, symbol pages, Esc, Tab, one-shot Ctrl, arrows, Enter and Del. Checks: `display.py --selftest`; `sudo display.py --selftest-terminal out.png` exercises an autologin PTY and framebuffer readback.
 
 **`display/wifi-setup`** (installed to `/usr/local/bin`): `wifi-setup SSID [PASSWORD]` rewrites `/etc/wpa_supplicant/wpa_supplicant.conf` (0600, `wpa_passphrase`, open network without a password), kills wpa_supplicant/udhcpc on wlan0 and runs `/etc/local.d/wifi.start`. It drops the Wi-Fi link, so use it from the on-screen terminal, not over SSH. Test overrides: `WPA_CONF=/tmp/x WIFI_RESTART=0`.
 

@@ -119,6 +119,8 @@ TERM_FILTERS = (
     ('USB_MAC', 'USB network addresses',
      (r'using random self ethernet address\Z', r'using random host ethernet address\Z'), 'hide',
      'Normal automatic USB network address selection.'),
+    ('PANEL_ON', 'Screen already on', (r'decon-\d+ already (on|ON)', r'dsim already on'), 'hide',
+     'The panel driver noting a wake request while the screen was already on.'),
     ('USB_GADGET', 'USB driver notices', (r'^usb[:_ ]', r'^ccic_notifier_init already registered', r'^dwc3 [0-9a-f]+\.dwc3: (usb: )?dwc3_gadget|^dwc3 [0-9a-f]+\.dwc3: Turn (on|off) gadget',
                                                  r'^gadget_dev_desc_UDC_store', r'^configfs-gadget gadget: ', r'Setting up USB gadget through configfs'), 'hide',
      'USB link, gadget and cable-detect chatter.'),
@@ -173,12 +175,22 @@ TERM_TOP, TERM_X = 96, 30   # fixed controls use the top strip; side padding cle
 TERM_ROTATE_BTN, TERM_KB_BTN = (30, 24, 520, 76), (560, 24, 1050, 76)
 TERM_USER = next((l.split(':')[0] for l in open('/etc/passwd') if l.split(':')[2:3] == ['10000']), 'user')   # pmOS default user
 KB_TOP, KEY_W, KEY_H = 1250, 108, 135
+OSK_TOP = TAB_Y * 2 // 3     # buffyboard fills the bottom third of the height it is given (it ignores -g's Y offset)
 KB_ROWS = {'abc': ('qwertyuiop', 'asdfghjkl', 'zxcvbnm'), 'ABC': ('QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'),
            'sym': ('!@#$%^&*()', '-_=+[]{};:', '\'",.?/\\'), 'sym2': ('~`|<>%^&*()', '#$@_-+=:;(', '\'"!?,./')}
 KB_SHIFT = {'abc': 'ABC', 'ABC': 'abc', 'sym': 'sym2', 'sym2': 'sym'}
 KB_LABELS = {'esc': 'Esc', 'tab': 'Tab', 'ctrl': 'Ctrl', 'left': '<', 'up': '^', 'down': 'v', 'right': '>', 'shift': 'Shift',
              'back': 'Del', 'space': 'space', 'enter': 'Enter'}
 KEY_SEQ = {'esc': '\x1b', 'tab': '\t', 'enter': '\r', 'back': '\x7f', 'space': ' '}
+# buffyboard's uinput key codes (US layout) -> pty input; it sends Shift/Ctrl/Alt as separate key events
+UKEYS = dict(zip(range(2, 14), zip('1234567890-=', '!@#$%^&*()_+')))
+UKEYS.update(zip(range(16, 28), zip('qwertyuiop[]', 'QWERTYUIOP{}')))
+UKEYS.update(zip(range(30, 42), zip("asdfghjkl;'`", 'ASDFGHJKL:"~')))
+UKEYS.update(zip(range(43, 54), zip('\\zxcvbnm,./', '|ZXCVBNM<>?')))
+UKEYS[57] = (' ', ' ')
+USEQ = {1: '\x1b', 14: '\x7f', 15: '\t', 28: '\r', 96: '\r', 103: '\x1b[A', 108: '\x1b[B', 106: '\x1b[C', 105: '\x1b[D',
+        102: '\x1b[H', 107: '\x1b[F', 104: '\x1b[5~', 109: '\x1b[6~', 111: '\x1b[3~'}
+SHIFTS, CTRLS, ALTS = {42, 54}, {29, 97}, {56, 100}
 PRESS_S = 0.1       # a tapped key stays highlighted at least this long: a quick tap's down + up land in one event batch
 BOOST_S = 1.0       # touch boost: little cores held at their max this long after a touch-down
 ARROWS = {'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D'}
@@ -1712,6 +1724,32 @@ def key_bytes(key, ctrl=False):
     return KEY_SEQ.get(key, key).encode()
 
 
+def uinput_bytes(code, held):
+    """buffyboard key code + held modifier codes -> bytes for the pty."""
+    if code in USEQ:
+        s = USEQ[code]
+    elif code in UKEYS:
+        s = UKEYS[code][bool(held & SHIFTS)]
+        if held & CTRLS and (s.isalpha() or s in '@[\\]^_'):
+            s = chr(ord(s.upper()) & 0x1f)
+    else:
+        return b''
+    return (('\x1b' if held & ALTS else '') + s).encode()
+
+
+def cut(box, hole):
+    """Parts of box (x0, y0, x1, y1) outside hole: buffyboard owns that rectangle of the framebuffer."""
+    if not hole:
+        return [box]
+    x0, y0, x1, y1 = box
+    hx0, hy0, hx1, hy1 = hole
+    if x1 <= hx0 or x0 >= hx1 or y1 <= hy0 or y0 >= hy1:
+        return [box]
+    my0, my1 = max(y0, hy0), min(y1, hy1)
+    parts = [(x0, y0, x1, hy0), (x0, hy1, x1, y1), (x0, my0, hx0, my1), (hx1, my0, x1, my1)]
+    return [b for b in parts if b[0] < b[2] and b[1] < b[3]]
+
+
 def kb_height():
     return TAB_Y - (KB_TOP - 6)
 
@@ -1724,7 +1762,7 @@ def term_cell_width():
     return font(round(TERM_FONT * P), mono=True).getlength('M') / P
 
 
-def term_size(rotated=False, keyboard=True):
+def term_size(rotated=False, keyboard=True, osk=False):
     """Terminal grid for the usable viewport; rotated mode lays out a landscape canvas before turning it clockwise."""
     if rotated:
         cols = (TAB_Y - TERM_TOP - 2 * TERM_X) // term_cell_width()
@@ -1732,7 +1770,7 @@ def term_size(rotated=False, keyboard=True):
         rows = (bottom - TERM_X) // TERM_CH
     else:
         cols = (W - 2 * TERM_X) // term_cell_width()
-        bottom = KB_TOP - 6 if keyboard else TAB_Y
+        bottom = (OSK_TOP if osk else KB_TOP) - 6 if keyboard else TAB_Y
         rows = (bottom - TERM_TOP) // TERM_CH
     return max(1, int(cols)), max(1, rows)
 
@@ -1952,7 +1990,7 @@ def term_row(row, cols, width, left, cw, ch, f, fi):
     return img
 
 
-def page_terminal(term, kb_mode, ctrl, pressed=None, rotated=False, keyboard=True):
+def page_terminal(term, kb_mode, ctrl, pressed=None, rotated=False, keyboard=True, osk=False):
     image = Image.new('RGB', IMG, BG)
     if rotated:
         canvas = Image.new('RGB', (round((TAB_Y - TERM_TOP) * P), round(W * P)), BG)
@@ -1983,7 +2021,7 @@ def page_terminal(term, kb_mode, ctrl, pressed=None, rotated=False, keyboard=Tru
             d.rectangle((cx, cy, cx + cw, cy + ch), fill=CYAN)
             char = (scr.buffer.get(cur.y) or {}).get(cur.x, scr.default_char).data or ' '
             d.text((cx, cy + ch / 2), char, fill=BG, font=fi if is_pua(char) else f, anchor='lm')
-    if keyboard:
+    if keyboard and not osk:
         kb = keyboard_image(kb_mode, ctrl, pressed, rotated)
         canvas.paste(kb, (0, round(kb_y * P)))
     image.paste(canvas.transpose(Image.Transpose.ROTATE_270) if rotated else canvas, (0, round(TERM_TOP * P)))
@@ -2276,6 +2314,7 @@ class Ui:
         self.term: Term | None = None        # Term session (None without pyte)
         self.kb_mode, self.ctrl = 'abc', False
         self.term_rotated, self.term_keyboard = False, True
+        self.osk = False                     # buffyboard runs over the keyboard strip and types for us
         self.term_options = False
         self.term_touch_origin, self.term_scroll_active = None, False
         self.term_scroll_units, self.term_scroll_sample, self.term_scroll_velocity = 0, None, 0.0
@@ -2362,7 +2401,7 @@ class Ui:
 
     def resize_term(self):
         if self.term:
-            self.term.resize(*term_size(self.term_rotated, self.term_keyboard))
+            self.term.resize(*term_size(self.term_rotated, self.term_keyboard, self.osk))
 
     def oc_pants(self):
         self.confirm = ('oc_pants', time.monotonic() + CONFIRM_S, self.oc_on)
@@ -2648,7 +2687,7 @@ class Ui:
 
     def key_tap(self, x, y):
         """On-screen keyboard: types into the pty on the Terminal tab, else into the focused form field."""
-        if self.page == TERM_PAGE and not self.term:
+        if self.page == TERM_PAGE and (not self.term or self.osk):
             return False
         if self.page == TERM_PAGE:
             if not self.term_keyboard:
@@ -2916,7 +2955,7 @@ class Ui:
         elif self.page == 4 and self.term_options:
             image = page_term_options(stale)
         elif self.page == TERM_PAGE:
-            image = page_terminal(self.term, self.kb_mode, self.ctrl, self.pressed, self.term_rotated, self.term_keyboard)
+            image = page_terminal(self.term, self.kb_mode, self.ctrl, self.pressed, self.term_rotated, self.term_keyboard, self.osk)
         elif self.page == DOCK_PAGE:
             image = page_docker_detail(self.dk, self.dinfo, data, self.toast and self.toast[0]) if self.dk else page_docker(data, stale, self.scroll)
         else:
@@ -2991,7 +3030,7 @@ class Display:
         except (OSError, ValueError):
             self.stride = self.xres * 4
         self.mm = mmap.mmap(self.fd, self.stride * yvirt)
-        self.blanked, self.prev = False, None
+        self.blanked, self.prev, self.hole = False, None, None
         logging.info('fb %dx%d stride %d mode %s (rgb offsets %s)', self.xres, self.yres, self.stride, self.mode, offs[0::3])
 
     def show(self, image):
@@ -3015,9 +3054,11 @@ class Display:
                 crop = big.crop(((x0 - px0) * sx, (y0 - py0) * sy, (x1 - px0) * sx, (y1 - py0) * sy))
                 x0, y0, x1, y1 = x0 * sx, y0 * sy, x1 * sx, y1 * sy
             data, row = crop.tobytes('raw', self.mode), (x1 - x0) * 4
-            for y in range(y1 - y0):
-                o = (self.yoff + y0 + y) * self.stride + x0 * 4
-                self.mm[o:o + row] = data[y * row:(y + 1) * row]
+            for px0, py0, px1, py1 in cut((x0, y0, x1, y1), self.hole):
+                n, s = (px1 - px0) * 4, (px0 - x0) * 4
+                for y in range(py0, py1):
+                    o, i = (self.yoff + y) * self.stride + px0 * 4, (y - y0) * row + s
+                    self.mm[o:o + n] = data[i:i + n]
         if boxes:
             try:
                 fcntl.ioctl(self.fd, 0x4606, bytes(self.var))   # FBIOPAN_DISPLAY: latch the frame
@@ -3045,6 +3086,16 @@ class Display:
         self.blank(False)
         self.mm.close()
         os.close(self.fd)
+
+
+VT_UI, CONSOLE_FONT = 7, '/usr/share/consolefonts/ter-132b.psf.gz'
+MODES = ('tty', 'ui', 'off')       # power key cycles: text console (tty1 + buffyboard) > dashboard > screen off
+
+
+def chvt(n):
+    with open('/dev/tty0', 'wb', buffering=0) as t:
+        fcntl.ioctl(t, 0x5606, n)   # VT_ACTIVATE
+        fcntl.ioctl(t, 0x5607, n)   # VT_WAITACTIVE
 
 
 def find_event(name):
@@ -3313,6 +3364,12 @@ def selftest():
         assert ui.on_gesture(('tap', 100, 60), data, 0) and not ui.files['view']
         assert ui.on_gesture(('tap', 100, FILE_TOP + 10), data, 0) and ui.files['path'] == td + '/sub'
         assert ui.on_gesture(('tap', 100, 60), data, 0) and ui.on_gesture(('tap', 100, 60), data, 0) and ui.files['path'] == os.path.dirname(td)
+    # buffyboard uinput -> bytes; framebuffer writes skip its rectangle
+    assert uinput_bytes(30, set()) == b'a' and uinput_bytes(30, {42}) == b'A' and uinput_bytes(46, {29}) == b'\x03'
+    assert uinput_bytes(2, {54}) == b'!' and uinput_bytes(103, set()) == b'\x1b[A' and uinput_bytes(16, {56}) == b'\x1bq'
+    assert uinput_bytes(26, {29}) == b'\x1b' and uinput_bytes(240, set()) == b''
+    assert cut((0, 0, 10, 10), None) == [(0, 0, 10, 10)] and cut((0, 0, 10, 10), (20, 0, 30, 10)) == [(0, 0, 10, 10)]
+    assert cut((0, 0, 10, 10), (0, 5, 10, 20)) == [(0, 0, 10, 5)] and cut((0, 0, 10, 10), (0, 0, 4, 10)) == [(4, 0, 10, 10)]
     # terminal keyboard -> bytes; keys tile the area without overlap
     assert key_bytes('a') == b'a' and key_bytes('a', True) == b'\x01' and key_bytes('c', True) == b'\x03'
     assert key_bytes('enter') == b'\r' and key_bytes('back') == b'\x7f' and key_bytes('esc') == b'\x1b' and key_bytes('space') == b' '
@@ -3865,6 +3922,79 @@ def main():
         ui.term.open_kmsg()
     fut, next_fetch, frames = None, 0.0, []
     dirty = True
+    # the dashboard draws on tty7 in graphics mode, so fbcon (cursor, kernel messages) never paints over it
+    ui_tty = os.open(f'/dev/tty{VT_UI}', os.O_RDWR | os.O_NOCTTY)
+
+    def show_vt(n):
+        if n != VT_UI:      # the kernel won't switch away from a KD_GRAPHICS console in VT_AUTO mode
+            fcntl.ioctl(ui_tty, 0x4B3A, 0)  # KDSETMODE KD_TEXT
+        chvt(n)
+        if n == VT_UI:
+            fcntl.ioctl(ui_tty, 0x4B3A, 1)  # KD_GRAPHICS
+
+    subprocess.run(['setfont', '-C', '/dev/tty1', CONSOLE_FONT], check=False)
+    mode, kb = None, None
+    osk, osk_fd, osk_held = None, None, set()
+
+    def stop_osk():
+        nonlocal osk, osk_fd, dirty
+        if osk:
+            osk.terminate()
+            osk.wait()
+            osk = None
+        if osk_fd is not None:
+            os.close(osk_fd)
+            osk_fd = None
+        osk_held.clear()
+        display.hole, display.prev, ui.osk, dirty = None, None, False, True
+        ui.resize_term()
+
+    def sync_osk():
+        """Terminal tab with keyboard shown: buffyboard draws and types in the keyboard strip, far snappier than our own."""
+        nonlocal osk
+        # ponytail: portrait only; rotated keeps the drawn keyboard until buffyboard -r is mapped onto that strip
+        on = mode == 'ui' and ui.page == TERM_PAGE and ui.term and ui.term_keyboard and not ui.term_rotated and not ui.confirm
+        s = display.xres / W
+        box = (0, round(OSK_TOP * s), display.xres, round(TAB_Y * s)) if on else None
+        if box == display.hole:
+            return
+        stop_osk()
+        if box:
+            display.hole, ui.osk = box, True
+            ui.resize_term()
+            # buffyboard turns its touch input off on a graphics VT, checked only at startup and on VT switches:
+            # start it while tty7 is in text mode, back to graphics once it is up (fbcon's flash gets redrawn below)
+            fcntl.ioctl(ui_tty, 0x4B3A, 0)  # KD_TEXT
+            osk = subprocess.Popen(['buffyboard', '-g', f'{display.xres}x{box[3]}'])
+            for _ in range(40):
+                if find_event('buffyboard'):
+                    break
+                time.sleep(0.05)
+            time.sleep(0.3)
+            fcntl.ioctl(ui_tty, 0x4B3A, 1)  # KD_GRAPHICS
+            display.prev = None
+
+    def set_mode(m):
+        nonlocal mode, kb, dirty
+        if m != 'ui':
+            stop_osk()
+        if kb and m != 'tty':       # buffyboard reads the touchscreen too: only run it on the console
+            kb.terminate()
+            kb.wait()
+            kb = None
+        if m == 'off':
+            show_vt(VT_UI)          # leave tty1 untouched by the black frame; switching back redraws it
+            display.blank(True)
+        else:
+            if display.blanked:
+                display.blank(False)
+            show_vt(1 if m == 'tty' else VT_UI)
+            if m == 'tty' and kb is None:
+                kb = subprocess.Popen(['buffyboard'])
+        mode, dirty = m, m == 'ui'
+        logging.info('mode %s', m)
+
+    set_mode('tty')
     while not stop:
         now = time.monotonic()
         if fut is None and now >= next_fetch:
@@ -3879,11 +4009,12 @@ def main():
             dirty |= ui.page != TERM_PAGE      # the Terminal tab shows no fetched data: stay idle
         if toggle:
             toggle.clear()
-            display.blank(not display.blanked)
-            dirty = not display.blanked
+            set_mode(MODES[(MODES.index(mode) + 1) % 3])
         term_fd = ui.term.fd if ui.term else None
         kmsg_fd = ui.term.kfd if ui.term else None
-        fds = [f for f in (key_fd, touch_fd, term_fd, kmsg_fd) if f is not None]
+        if osk and osk_fd is None and (path := find_event('buffyboard')):
+            osk_fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+        fds = [f for f in (key_fd, touch_fd, term_fd, kmsg_fd, osk_fd) if f is not None]
         for f in select.select(fds, [], [], 0.025 if ui.term_coast or ui.press_off else 0.1)[0]:
             if f == term_fd:
                 dirty |= ui.term.read() and ui.page == TERM_PAGE
@@ -3891,22 +4022,29 @@ def main():
             if f == kmsg_fd:
                 dirty |= ui.term.read_kmsg() and ui.page == TERM_PAGE
                 continue
+            if f == osk_fd:
+                for kind, code, value in events(f):
+                    if kind != 1:
+                        continue
+                    if code in SHIFTS | CTRLS | ALTS:
+                        (osk_held.add if value else osk_held.discard)(code)
+                    elif value:
+                        ui.term.send(uinput_bytes(code, osk_held))
+                continue
             for kind, code, value in events(f):
                 if f == key_fd:
                     if kind == 1 and value == 1 and code == KEY_POWER:
-                        display.blank(not display.blanked)
-                        dirty = not display.blanked
-                    elif kind == 1 and value in (1, 2) and code in (KEY_VOLDOWN, KEY_VOLUP) and not display.blanked:
+                        set_mode(MODES[(MODES.index(mode) + 1) % 3])
+                    elif kind == 1 and value in (1, 2) and code in (KEY_VOLDOWN, KEY_VOLUP) and mode == 'ui':
                         dirty |= ui.scroll_by(VOL_STEP if code == KEY_VOLDOWN else -VOL_STEP, data)
                 else:
                     for g in touch.feed(kind, code, value, now):
-                        if display.blanked:
+                        if mode == 'off':
                             if g[0] == 'tap':
-                                display.blank(False)
-                                dirty = True
-                        else:
+                                set_mode('tty')
+                        elif mode == 'ui':
                             dirty |= ui.on_gesture(g, data, now)
-        if touch and not display.blanked:
+        if touch and mode == 'ui':
             for g in touch.tick(now):
                 dirty |= ui.on_gesture(g, data, now)
         if ui.term and ui.term.wrote:       # a key was just typed: catch the shell's echo so one frame shows highlight + char
@@ -3947,7 +4085,8 @@ def main():
             logging.info('running %s', ui.action)
             subprocess.Popen([ui.action])
             ui.action = None
-        if dirty and not display.blanked:
+        sync_osk()
+        if dirty and mode == 'ui':
             t0 = time.monotonic()
             display.show(ui.render(data, stale, now))
             frames.append(time.monotonic() - t0)
@@ -3955,7 +4094,11 @@ def main():
                 logging.info('frame %d: %.0f ms (avg %.0f ms)', len(frames), frames[-1] * 1e3, sum(frames) / len(frames) * 1e3)
             dirty = False
     ui.unboost()
+    stop_osk()
+    if kb:
+        kb.terminate()
     display.close()
+    show_vt(1)
 
 
 if __name__ == '__main__':

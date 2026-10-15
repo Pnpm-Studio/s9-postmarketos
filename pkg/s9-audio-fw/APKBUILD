@@ -1,0 +1,17 @@
+maintainer="S9 <s9@example.org>"
+pkgname=s9-audio-fw
+pkgver=1
+pkgrel=0
+pkgdesc="Stock Samsung abox/vts audio DSP firmware and mixer_paths.xml for speaker audio (s9-audio)"
+url="https://postmarketos.org"
+arch="aarch64"
+license="custom:proprietary"
+options="!check !strip !tracedeps"
+# s9-audio-fw-root.tar.gz is assembled from the stock firmware blobs by pkg/s9-audio-fw/stage.sh
+source="s9-audio-fw-root.tar.gz"
+builddir="$srcdir"
+
+package() {
+	mkdir -p "$pkgdir"
+	cp -a "$srcdir"/root/. "$pkgdir"/
+}

@@ -11,6 +11,7 @@ depends="
 	bash
 	bash-completion
 	bluez
+	buffyboard
 	bluez-deprecated
 	crun
 	device-samsung-starlte-nonfree-firmware
@@ -22,6 +23,7 @@ depends="
 	dropbear-scp
 	evtest
 	fastfetch
+	font-terminus
 	fd
 	font-droid
 	font-jetbrains-mono-nerd

@@ -14,6 +14,9 @@ grep -q '^rc_cgroup_mode=' /etc/rc.conf \
 	|| echo 'rc_cgroup_mode="legacy"' >> /etc/rc.conf
 
 
+# tty1: autologin the default user on the phone's own console (busybox getty has no --autologin).
+sed -i 's|^tty1::respawn:.*|tty1::respawn:/sbin/getty -n -l /usr/local/bin/s9-autologin 38400 tty1 linux|' /etc/inittab
+
 # BT patch lookup path used by hciattach.
 ln -sf postmarketos/bcm4361B2_semco.hcd /lib/firmware/BCM4347B2.hcd
 

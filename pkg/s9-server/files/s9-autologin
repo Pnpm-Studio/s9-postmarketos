@@ -1,0 +1,3 @@
+#!/bin/sh
+# tty1 autologin (busybox getty has none): getty -n -l runs this; log in the pmOS default user (uid 10000, may be renamed)
+exec /bin/login -f "$(awk -F: '$3 == 10000 {print $1; exit}' /etc/passwd)"

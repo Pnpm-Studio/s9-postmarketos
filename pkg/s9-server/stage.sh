@@ -52,6 +52,8 @@ mkdir -p "$D/usr/share" && tar -C "$D/usr/share" -xJf "$R/shell/blesh.tar.xz"
 # generic (shareable) rules; firewall/rules.v4 is the owner's 10.0.0.0/24 variant
 i 644 pkg/s9-server/files/rules.v4 /etc/s9-firewall/rules.v4
 i 644 pkg/s9-server/files/store_mode /etc/s9/store_mode
+i 755 pkg/s9-server/files/s9-autologin /usr/local/bin/s9-autologin
+i 644 pkg/s9-server/files/61-s9-touch.rules /etc/udev/rules.d/61-s9-touch.rules
 # copied over files owned by other packages by the post-install script
 i 644 docker/conf.d-docker /usr/share/s9-server/conf.d-docker
 i 644 tailscale/conf.d-tailscale /usr/share/s9-server/conf.d-tailscale

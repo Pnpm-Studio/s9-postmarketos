@@ -1,0 +1,2 @@
+# sec_ts reports ABS 0x3e with max -1, which makes libinput drop the touchscreen
+ACTION=="add|change", KERNEL=="event*", ATTRS{name}=="sec_touchscreen|sec_touchpad", ENV{EVDEV_ABS_3E}="0:1", RUN{builtin}+="keyboard"
