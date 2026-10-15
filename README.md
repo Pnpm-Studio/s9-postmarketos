@@ -4,6 +4,8 @@ Headless server ROM for the Samsung Galaxy S9 (SM-G960F, Exynos 9810): postmarke
 
 **Install:** flash it from the browser at <https://philipplinux.github.io/s9-postmarketos/> (Chrome/Edge), or grab the files from the [latest release](https://github.com/philipplinux/s9-postmarketos/releases/latest). Login `user` / `changeme`.
 
+[![Buy me a beer?](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20beer%3F&emoji=%F0%9F%8D%BA&slug=philipplinux&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/philipplinux)
+
 <p align="center"><img src="docs/fastfetch.png" width="600" alt="fastfetch in the on-phone terminal"></p>
 
 <p align="center"><img src="docs/phone-ui-tour.gif" width="240" alt="Boot logo and phone UI tab tour"> <img src="docs/phone-ui-subpages.gif" width="240" alt="Phone UI subpages"></p>
@@ -135,3 +137,7 @@ and firmware redistribution review, hardware acceptance, and flashing/recovery
 instructions. Track release status in the Hardware Vault tasks linked below.
 
 Current development handoff: [2026-10-15](docs/2026-10-15-handoff.md).
+
+---
+
+If this saves you time: [![Buy me a beer?](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20beer%3F&emoji=%F0%9F%8D%BA&slug=philipplinux&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/philipplinux)
