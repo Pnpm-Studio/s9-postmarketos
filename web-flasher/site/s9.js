@@ -11,14 +11,16 @@ function matchesPin(file, pin) {
 }
 
 /**
- * Downloads a pinned file served next to this page (same origin) into a File, so it can go through the
+ * Downloads a pinned file (next to this page, else from the release mirror) into a File, so it can go through the
  * same name/size/SHA-256 checks as a picked one. Parts are folded into Blobs every 64 MiB so the browser
  * can page them to disk instead of holding ~1.3 GB of images in RAM.
  * @param {{name:string,size:number}} pin @param {(fraction:number)=>void} progress @param {typeof fetch} get
  */
 export async function fetchPinned(pin, progress = () => {}, get = fetch) {
-  const response = await get(`./${encodeURIComponent(pin.name)}`, { cache: 'no-store' });
-  if (!response.ok || !response.body) throw Error(`${pin.name} is not on this site (HTTP ${response.status}). Pick the file instead.`);
+  const name = encodeURIComponent(pin.name);
+  let response = await get(`./${name}`, { cache: 'no-store' });
+  if (!response.ok && s9.mirror) response = await get(`${s9.mirror}${encodeURIComponent(s9.release)}/${name}`);
+  if (!response.ok || !response.body) throw Error(`${pin.name} could not be downloaded (HTTP ${response.status}). Pick the file instead.`);
   const reader = response.body.getReader();
   /** @type {BlobPart[]} */ let parts = [];
   /** @type {Blob[]} */ const blobs = [];

@@ -186,7 +186,12 @@ test('fetchPinned returns a named File of the pinned size and rejects missing or
   const file = await fetchPinned({ name: 'boot.img', size: 5 }, () => {}, serve('hello'));
   assert.equal(file.name, 'boot.img');
   assert.equal(await file.text(), 'hello');
-  await assert.rejects(fetchPinned({ name: 'boot.img', size: 5 }, () => {}, serve('nope', 404)), /not on this site/);
+  await assert.rejects(fetchPinned({ name: 'boot.img', size: 5 }, () => {}, serve('nope', 404)), /could not be downloaded/);
+  const urls = [];
+  const mirrored = await fetchPinned({ name: 'boot.img', size: 5 }, () => {},
+    async url => { urls.push(url); return url.startsWith('./') ? new Response('', { status: 404 }) : new Response('hello'); });
+  assert.equal(await mirrored.text(), 'hello');
+  assert.deepEqual(urls, ['./boot.img', `${s9.mirror}${s9.release}/boot.img`]);
   await assert.rejects(fetchPinned({ name: 'boot.img', size: 5 }, () => {}, serve('hell')), /pinned 5/);
   await assert.rejects(fetchPinned({ name: 'boot.img', size: 5 }, () => {}, serve('hello!')), /larger/);
 });

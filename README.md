@@ -46,8 +46,9 @@ Tested on one SM-G960F running the dev install; the release image itself is not 
 [`web-flasher/`](web-flasher/README.md): WebUSB installer for this phone only (SM-G960F / Exynos). Section 1
 installs TWRP over Odin (Download Mode); section 2 writes BOOT/SYSTEM/VENDOR from TWRP over ADB and verifies
 them on the phone. Build and run: `cd web-flasher && npm ci --ignore-scripts && npm run check && npm test &&
-npm run build`, then serve `dist/` on `127.0.0.1:8085`. Put the three images (and the TWRP .img) next to
-`index.html` and the page downloads and selects them itself; otherwise pick them from disk. Either way every file
+npm run build`, then serve `dist/` on `127.0.0.1:8085`. Hosted copy: <https://philipplinux.github.io/s9-postmarketos/>
+(Chrome/Edge). The download buttons fetch the images from next to `index.html` or else from the
+[Hugging Face mirror](https://huggingface.co/PhilippLinux/s9-postmarketos), and select them; or pick them from disk. Either way every file
 is SHA-256-checked against `site/s9-manifest.js` before anything is written. Experimental, not hardware-tested end to end.
 
 ## Build the image from scratch

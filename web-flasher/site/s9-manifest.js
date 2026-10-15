@@ -13,6 +13,8 @@ export const s9 = {
   },
   // Section 2: written from TWRP over ADB. `device` paths are the only write targets.
   release: 'v2026.10.15-s9',
+  // CORS-enabled mirror, one folder per release: <mirror><release>/<name>. Tried when the file is not next to the page.
+  mirror: 'https://huggingface.co/PhilippLinux/s9-postmarketos/resolve/main/',
   byName: '/dev/block/platform/11120000.ufs/by-name',
   images: [
     { name: 'samsung-starlte-root.img', partition: 'SYSTEM', size: 1318060032, sha256: '1bc97b90648babc544c11dfe7595db1bec032d9a8b7597127b71d082b268dc62' },

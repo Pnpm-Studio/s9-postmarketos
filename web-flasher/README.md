@@ -1,9 +1,10 @@
 # S9 web flasher
 
 Browser installer for the Samsung Galaxy S9 **SM-G960F (Exynos, samsung-starlte)** only; not the Snapdragon
-SM-G9600. Static page over WebUSB; files stay in the browser and stream to the phone over USB. If the images and the TWRP
-.img sit next to `index.html` (same origin), the "Download from this site" buttons fetch and select them;
-otherwise use the file pickers. Either way each file is checked against the pinned size and SHA-256 before any write.
+SM-G9600. Static page over WebUSB; files stay in the browser and stream to the phone over USB. The download buttons fetch the
+images and the TWRP .img next to `index.html` if they are there, else from the Hugging Face mirror
+(`huggingface.co/PhilippLinux/s9-postmarketos`, folder `<release>/`; GitHub release files can't be fetched by a page
+because they send no CORS header), and select them; or use the file pickers. Either way each file is checked against the pinned size and SHA-256 before any write.
 **Experimental: not hardware-tested end to end.** Use desktop Chrome or Edge on `localhost` or HTTPS.
 
 1. **Install TWRP** (skip if you have it). Download Mode, Odin protocol via
