@@ -2,14 +2,15 @@
 
 Headless server ROM for the Samsung Galaxy S9 (SM-G960F, Exynos 9810): postmarketOS edge (OpenRC) on our patched vendor kernel 4.9, with an on-phone touch UI, a web dashboard, Docker, Tailscale, opt-in overclock and a bash + starship + ble.sh + fzf shell. Stdlib-only Python.
 
-![Web dashboard](docs/web-dashboard.png)
+**Install:** flash it from the browser at <https://philipplinux.github.io/s9-postmarketos/> (Chrome/Edge), or grab the files from the [latest release](https://github.com/philipplinux/s9-postmarketos/releases/latest). Login `user` / `changeme`.
 
+<p align="center"><img src="docs/fastfetch.png" width="600" alt="fastfetch in the on-phone terminal"></p>
 
 <p align="center"><img src="docs/phone-ui-tour.gif" width="240" alt="Boot logo and phone UI tab tour"> <img src="docs/phone-ui-subpages.gif" width="240" alt="Phone UI subpages"></p>
 
 The on-phone touch UI (`display/display.py`): boot logo and tab tour, and every subpage. Frames are rendered with the real UI code on the phone (private values replaced).
 
-<p align="center"><img src="docs/fastfetch.png" width="600" alt="fastfetch in the on-phone terminal"></p>
+![Web dashboard](docs/web-dashboard.png)
 
 LLM: the image ships llama.cpp (`s9-llama-vk`, run with `mali-run`; bring your own model) with our patch to make it somewhat Mali-compatible, build steps and model link in [llm/README.md](llm/README.md); speed in [docs/llm-bench.md](docs/llm-bench.md).
 
@@ -36,7 +37,8 @@ Tested on one SM-G960F: a fresh install of the release image via the web flasher
 | llama.cpp (GPU, Vulkan) | partly | runs, but slower than the CPU (~1 t/s) |
 | Audio (speaker) | not in image | works with the phone's own stock audio firmware, which is not redistributed |
 | Reboot on freeze | not tested | no real lockup triggered yet |
-| Web flasher, TWRP zip, release image first boot | not tested | |
+| Web flasher, release image first boot | working | fresh install on one SM-G960F |
+| TWRP zip | not tested | |
 | Camera, flash LED | not working | per the postmarketOS wiki |
 | Modem/SIM, GPS, fingerprint, NFC | not tested | out of scope for a server |
 | ADB, MTP | not implemented | |
@@ -49,7 +51,7 @@ them on the phone. Build and run: `cd web-flasher && npm ci --ignore-scripts && 
 npm run build`, then serve `dist/` on `127.0.0.1:8085`. Hosted copy: <https://philipplinux.github.io/s9-postmarketos/>
 (Chrome/Edge). The download buttons fetch the images from next to `index.html` or else from the
 [Hugging Face mirror](https://huggingface.co/PhilippLinux/s9-postmarketos), and select them; or pick them from disk. Either way every file
-is SHA-256-checked against `site/s9-manifest.js` before anything is written. Experimental, not hardware-tested end to end.
+is SHA-256-checked against `site/s9-manifest.js` before anything is written. Experimental; tested end to end on one SM-G960F.
 
 ## Build the image from scratch
 
