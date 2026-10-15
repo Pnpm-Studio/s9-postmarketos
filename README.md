@@ -4,6 +4,8 @@ Headless server ROM for the Samsung Galaxy S9 (SM-G960F, Exynos 9810): postmarke
 
 **Install:** flash it from the browser at <https://philipplinux.github.io/s9-postmarketos/> (Chrome/Edge), or grab the files from the [latest release](https://github.com/philipplinux/s9-postmarketos/releases/latest). Login `user` / `changeme`.
 
+**Discussion:** [XDA thread](https://xdaforums.com/t/rom-linux-pmos4-9-s9-headless-server-w-dashboard-overclock-sm-g960f-exynos-starlte.4805155/) · [r/mobilelinux](https://www.reddit.com/r/mobilelinux/comments/1x6luth/samsung_galaxy_s9_exynos_on_nura_postmarketos/)
+
 [![Buy me a beer?](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20beer%3F&emoji=%F0%9F%8D%BA&slug=philipplinux&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/philipplinux)
 
 <p align="center"><img src="docs/fastfetch.png" width="600" alt="fastfetch in the on-phone terminal"></p>
