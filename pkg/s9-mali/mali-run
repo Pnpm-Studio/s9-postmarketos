@@ -1,0 +1,13 @@
+#!/bin/sh
+# Run a bionic (Android) binary against the Mali-G72 blob: mali-run <prog|/path/in/root> [args]
+# Bare names are looked up in /opt/bin inside the root (llama-* from s9-llama-vk, vkprobe).
+R=/usr/lib/s9-mali/root
+[ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+[ $# -gt 0 ] || { echo "usage: mali-run <prog> [args]" >&2; exit 2; }
+[ -e "$R/proc/self" ] || rc-service s9-mali start >&2 || exit 1
+p=$1; shift
+case $p in /*) ;; *) p=/opt/bin/$p ;; esac
+export LD_LIBRARY_PATH=/opt/vk:/apex/com.android.runtime/lib64/bionic:/apex/com.android.runtime/lib64:/system/lib64:/vendor/lib64:/vendor/lib64/egl
+# r19 faults (DATA_INVALID_FAULT, device lost) when ggml overlaps Vulkan submits
+export GGML_VK_SERIALIZE_SUBMISSIONS=${GGML_VK_SERIALIZE_SUBMISSIONS-1}
+exec chroot "$R" "$p" "$@"

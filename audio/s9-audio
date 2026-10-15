@@ -1,0 +1,64 @@
+#!/bin/sh
+# Audio on the S9 without Android's HAL: route RDMA0 (hw:0,0) to the speaker amp or headphones
+# using Samsung's mixer_paths.xml, and load the abox DSP firmware.
+# Settings: /etc/s9/audio  AUDIO=on|off  OUT=speaker|headphone  VOL=0..100
+# Usage: s9-audio apply | test | status   (sounds: s9-chime)
+CONF=/etc/s9/audio XML=/etc/s9/mixer_paths.xml LIB=/usr/local/lib/s9-audio
+AUDIO=on OUT=speaker VOL=60
+[ -r $CONF ] && . $CONF
+PCM="-D hw:0,0 -f S16_LE -r 48000 -c 2"
+
+ready() { dmesg | grep -q 'Calliope is ready'; }
+
+feed() {        # no udev firmware helper here: the boot-time requests (rootfs not yet up) wait 60 s in sysfs
+	for d in /sys/class/firmware/*/; do
+		[ -e "$d/loading" ] || continue
+		f=/lib/firmware/$(sed -n 's/^FIRMWARE=//p' "$d/uevent")
+		if [ -f "$f" ]; then echo 1 >"$d/loading"; cat "$f" >"$d/data"; echo 0 >"$d/loading"
+		else echo -1 >"$d/loading"; fi
+	done
+}
+
+prime() {       # abox asks for its firmware asynchronously on first use; the first open always fails
+	for i in 1 2 3 4 5; do
+		aplay -q $PCM -d 1 /dev/zero 2>/dev/null && return 0
+		sleep 2
+	done
+	return 1
+}
+
+case "$1" in
+apply)
+	if [ "$AUDIO" != on ]; then
+		amixer -q -c0 cset name='ABOX UAIF0 SPK' RESERVED
+		amixer -q -c0 cset name='ABOX UAIF1 SPK' RESERVED
+		amixer -q -c0 cset name='HPOUT2 Digital Switch' 0
+		echo off; exit 0
+	fi
+	feed
+	python3 $LIB/mixer-path.py $XML | sh 2>/dev/null
+	python3 $LIB/mixer-path.py $XML media-$OUT | sh 2>/dev/null
+	# the amp (max98512) hangs off UAIF1; Samsung feeds it from RDMA7 via its DSM effect, which needs the HAL.
+	# Send RDMA0's SIFS0 there too, so one PCM drives both outputs.
+	if [ $OUT = speaker ]; then
+		amixer -q -c0 cset name='ABOX UAIF1 SPK' SIFS0
+		amixer -q -c0 cset name='SPK Analog Right Gain' 12dB   # boots muted; One Stop Mode drives the right amp
+		amixer -q -c0 cset name='SPK Analog Left Gain' 12dB
+	else
+		amixer -q -c0 cset name='ABOX UAIF1 SPK' RESERVED
+	fi
+	# speaker volume: s9-chime scales samples (the amp resets 'Digital Volume' on every stream start)
+	amixer -q -c0 cset name='HPOUT2 Digital Volume' $((VOL * 127 / 100 + 64))   # 0..191, 128 = 0 dB
+	prime && echo "on: $OUT $VOL%" || { echo "abox firmware did not load" >&2; exit 1; }
+	;;
+test)
+	[ "$AUDIO" = on ] || { echo "audio is off" >&2; exit 1; }
+	exec /usr/local/bin/s9-chime test
+	;;
+status)
+	echo "AUDIO=$AUDIO OUT=$OUT VOL=$VOL dsp=$(ready && echo ready || echo down)"
+	;;
+*)
+	echo "usage: s9-audio apply|test|status" >&2; exit 2
+	;;
+esac

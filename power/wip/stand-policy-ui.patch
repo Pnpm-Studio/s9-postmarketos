@@ -1,0 +1,51 @@
+--- a/dashboard/server.py
++++ b/dashboard/server.py
+@@ -107,7 +107,15 @@
+             "present": (present_raw not in {"0", "no", "false"}) if present_raw is not None else None,
+         }
+         plugged = [(_read_text(supplies / n / "online") or "0") != "0" for n in ("usb", "ac", "wireless")]
+-        return {**gauge, "plugged": any(plugged), "health": value("HEALTH")}
++        cap_on = value("STORE_MODE") == "1"
++        display_status = gauge["status"]
++        if (cap_on and capacity is not None and capacity >= 70 and any(plugged)
++                and display_status in {"Discharging", "Not charging"} and value("HEALTH") == "Good"
++                and all(value(key) == "0" for key in ("BATT_SLATE_MODE", "BATT_MISC_EVENT", "BATT_CURRENT_EVENT"))):
++            display_status = "Paused at 70% cap"
++        return {**gauge, "plugged": any(plugged), "health": value("HEALTH"),
++                "display_status": display_status, "charge_cap_percent": 70 if cap_on else None,
++                "current_avg_ma": _int_value(value("CURRENT_AVG"))}
+     return {"available": False, "name": None, "percent": None, "status": None,
+             "temperature_c": None, "voltage_v": None, "current_ma": None, "present": None}
+ 
+--- /dev/null
++++ b/dashboard/test_battery.py
+@@ -0,0 +1,29 @@
++#!/usr/bin/env python3
++"""Keep raw charging telemetry while explaining a healthy charge-cap pause."""
++import tempfile
++from pathlib import Path
++from server import battery_info
++
++with tempfile.TemporaryDirectory() as directory:
++    root = Path(directory)
++    battery = root / 'class/power_supply/battery'
++    usb = root / 'class/power_supply/usb'
++    battery.mkdir(parents=True)
++    usb.mkdir()
++    values = {'type': 'Battery', 'capacity': '70', 'status': 'Discharging', 'health': 'Good',
++              'store_mode': '1', 'batt_slate_mode': '0', 'batt_misc_event': '0',
++              'batt_current_event': '0', 'current_now': '-4', 'current_avg': '0'}
++    for key, value in values.items():
++        (battery / key).write_text(value)
++    (usb / 'online').write_text('1')
++    result = battery_info(root)
++    assert result['status'] == 'Discharging' and result['display_status'] == 'Paused at 70% cap'
++    assert result['charge_cap_percent'] == 70 and result['current_avg_ma'] == 0
++    for key, value in [('health', 'Overheat'), ('batt_misc_event', '1'), ('batt_current_event', '1'),
++                       ('batt_slate_mode', '1'), ('capacity', '69'), ('store_mode', '0')]:
++        (battery / key).write_text(value)
++        assert battery_info(root)['display_status'] == 'Discharging', key
++        (battery / key).write_text(values[key])
++    (usb / 'online').write_text('0')
++    assert battery_info(root)['display_status'] == 'Discharging'
++print('Battery cap label preserves raw data and leaves faults/unplugged states visible')

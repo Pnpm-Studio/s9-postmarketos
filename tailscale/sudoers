@@ -1,0 +1,2 @@
+# The dashboard (uid 10000, any name) may sign in to / turn off Tailscale; exact commands only.
+#10000 ALL=(root) NOPASSWD: /usr/bin/tailscale up --timeout 10m, /usr/bin/tailscale down

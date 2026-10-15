@@ -1,0 +1,12 @@
+#!/sbin/openrc-run
+description="Show the postmarketOS logo on the framebuffer until s9-display takes over"
+
+depend() {
+	need devfs
+	before udev
+}
+
+start() {
+	python3 -S /usr/local/lib/s9-bootlogo/show.py && cut -d' ' -f1 /proc/uptime > /run/s9-bootlogo.uptime
+	return 0
+}

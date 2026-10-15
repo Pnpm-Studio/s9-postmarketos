@@ -1,0 +1,80 @@
+#!/bin/sh
+# usb-net up|down: CDC-NCM network (+ ACM serial) USB gadget on 172.16.43.1.
+# Reworks the stock gadget g1 (Samsung allows only one, g2 gives ENOMEM).
+# Samsung configfs quirks (CONFIG_USB_CONFIGFS_UEVENT):
+#  - symlinks only park functions on gi->linked_func; writing names to
+#    android0/functions moves them into the config. Without it bind = -EINVAL.
+#  - a config string other than "Conf 1" hits a gsi/"Recovery ADB" branch that
+#    keeps only the first link, so the string must be "Conf 1".
+# If the tx path jams, u_ether returns NETDEV_TX_BUSY forever and NET_TX
+# softirq pins CPU0; the guard loop takes the link down when that happens.
+# Mode from /etc/s9/usb (MODE=network|rndis|charge, default network): network = NCM+serial, rndis = RNDIS+serial
+# (Windows), charge = gadget off. "apply" (boot + phone UI) switches live when safe, exit 3 = needs a reboot
+# (the built function can't change, and ncm must never be re-linked once bound).
+MODE=network
+[ -f /etc/s9/usb ] && . /etc/s9/usb
+G=/sys/kernel/config/usb_gadget/g1
+A=/sys/class/android_usb/android0
+UDC=$(ls /sys/class/udc | head -1)
+# Function this script bound this boot (the stock gadget from the initramfs already links rndis, so links tell nothing).
+built() { cat /run/usb-net.built 2>/dev/null || echo none; }
+
+guard() {
+	p=$(awk '/softirq/{print $4}' /proc/stat)
+	while sleep 2; do
+		n=$(awk '/softirq/{print $4}' /proc/stat)
+		if [ $((n - p)) -gt 100000 ]; then
+			logger -t usb-net "NET_TX storm ($((n - p))/2s), taking USB down"
+			"$0" down
+			exit 1
+		fi
+		p=$n
+	done
+}
+
+case "$1" in
+up)
+	B=$(built)
+	[ "$B" = none ] && { B=ncm; [ "$MODE" = rndis ] && B=rndis; }
+	echo 0 > $A/enable
+	echo > $G/UDC 2>/dev/null
+	# Never unlink: Samsung's unbind parks RNDIS, and re-linking bound NCM can panic.
+	echo "Conf 1" > $G/configs/c.1/strings/0x409/configuration
+	mkdir -p $G/functions/$B.usb0 $G/functions/acm.gs0
+	for fn in $B.usb0 acm.gs0; do
+		[ -e "$G/configs/c.1/$fn" ] || ln -s "$G/functions/$fn" "$G/configs/c.1/$fn"
+	done
+	echo $B,acm > $A/functions
+	echo "$UDC" > $G/UDC
+	echo 1 > $A/enable
+	echo $B > /run/usb-net.built
+	IF=$(cat $G/functions/$B.usb0/ifname)
+	ip addr flush dev "$IF"
+	ip addr add 172.16.43.1/24 dev "$IF" 2>/dev/null
+	ip link set "$IF" up
+	# DHCP hands the PC 172.16.43.2, so no per-phone host config is needed.
+	# Own /24 per phone (Mi A3 uses 172.16.42.x) so several can be plugged in.
+	pkill -x unudhcpd 2>/dev/null
+	setsid unudhcpd -i "$IF" -s 172.16.43.1 -c 172.16.43.2 </dev/null >/dev/null 2>&1 &
+	pkill -f "usb-net guard" 2>/dev/null
+	setsid "$0" guard </dev/null >/dev/null 2>&1 &
+	echo "up: $IF 172.16.43.1 (host: 172.16.43.2/24), serial ttyGS0"
+	;;
+down)
+	pkill -f "usb-net guard" 2>/dev/null
+	pkill -x unudhcpd 2>/dev/null
+	echo 0 > $A/enable
+	echo > $G/UDC 2>/dev/null
+	echo down
+	;;
+apply)
+	B=$(built)
+	case $MODE in
+	charge) "$0" down ;;
+	rndis) [ "$B" = ncm ] && { echo "reboot needed"; exit 3; }; "$0" up ;;
+	*) [ "$B" = rndis ] && { echo "reboot needed"; exit 3; }; "$0" up ;;
+	esac
+	;;
+guard) guard ;;
+*) echo "usage: usb-net up|down|apply"; exit 2 ;;
+esac

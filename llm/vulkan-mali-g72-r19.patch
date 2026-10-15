@@ -1,0 +1,332 @@
+diff --git a/ggml/src/ggml-opencl/ggml-opencl.cpp b/ggml/src/ggml-opencl/ggml-opencl.cpp
+index 17ceacc..f9496cb 100644
+--- a/ggml/src/ggml-opencl/ggml-opencl.cpp
++++ b/ggml/src/ggml-opencl/ggml-opencl.cpp
+@@ -6777,6 +6777,8 @@ static bool ggml_opencl_is_device_supported(ggml_backend_dev_t dev) {
+         }
+     } else if (strstr(dev_ctx->device_name.c_str(), "Intel")) {
+         dev_ctx->gpu_family = GPU_FAMILY::INTEL;
++    } else if (strstr(dev_ctx->device_name.c_str(), "Mali")) {
++        dev_ctx->gpu_family = GPU_FAMILY::UNKNOWN; // s9: try generic kernels on Mali
+     } else {
+         GGML_LOG_WARN("ggml_opencl: unsupported GPU '%s'.\n", dev_ctx->device_name.c_str());
+         dev_ctx->gpu_family = GPU_FAMILY::UNKNOWN;
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 8357f01..95028bb 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -957,16 +957,13 @@ void ggml_vk_submit(vk_context& ctx, vk::Fence fence) {
+             });
+             tl_submit_infos[idx].sType = vk::StructureType::eTimelineSemaphoreSubmitInfo;
+             tl_submit_infos[idx].pNext = nullptr;
++            // s9 patch: drop (timeline) semaphores, one in-order compute queue
+             vk::SubmitInfo si{
+-                (uint32_t) submission.wait_semaphores.size(),
+-                tl_wait_semaphores[idx].data(),
+-                stage_flags[idx].data(),
++                0, nullptr, nullptr,
+                 1,
+                 &submission.buffer->buf,
+-                (uint32_t) submission.signal_semaphores.size(),
+-                tl_signal_semaphores[idx].data(),
++                0, nullptr,
+             };
+-            si.setPNext(&tl_submit_infos[idx]);
+             submit_infos.push_back(si);
+         }
+     }
+@@ -1042,7 +1039,8 @@ std::unique_ptr<vk_queue> ggml_vk_create_queue(vk_device& device, uint32_t queue
+         h = std::make_shared<vk_queue_handle_synchronized>();
+     }
+ 
+-    h->queue = device->device.getQueue2(queue_info2);
++    // s9 patch: Mali r19 returns a null queue from vkGetDeviceQueue2
++    h->queue = device->has_internally_synchronized_queues ? device->device.getQueue2(queue_info2) : device->device.getQueue(queue_family_index, queue_index);
+     h->device = device;
+     // Avoid concurrent submissions on NVIDIA due to driver bug.
+     if (device->vendor_id == VK_VENDOR_ID_NVIDIA) {
+@@ -1086,7 +1084,7 @@ static vk_semaphore * ggml_vk_create_binary_semaphore(ggml_backend_vk_context *
+     VK_LOG_DEBUG("ggml_vk_create_timeline_semaphore()");
+     vk::SemaphoreTypeCreateInfo tci{ vk::SemaphoreType::eBinary, 0 };
+     vk::SemaphoreCreateInfo ci{};
+-    ci.setPNext(&tci);
++    (void)tci;  // s9 patch: no timeline semaphores
+     vk::Semaphore semaphore = ctx->device->device.createSemaphore(ci);
+     ctx->gc.semaphores.push_back({ semaphore, 0 });
+     return &ctx->gc.semaphores[ctx->gc.semaphores.size() - 1];
+@@ -1097,7 +1095,7 @@ static vk_semaphore * ggml_vk_create_timeline_semaphore(ggml_backend_vk_context
+     if (ctx->semaphore_idx >= ctx->gc.tl_semaphores.size()) {
+         vk::SemaphoreTypeCreateInfo tci{ vk::SemaphoreType::eTimeline, 0 };
+         vk::SemaphoreCreateInfo ci{};
+-        ci.setPNext(&tci);
++        (void)tci;  // s9 patch: no timeline semaphores
+         vk::Semaphore semaphore = ctx->device->device.createSemaphore(ci);
+         ctx->gc.tl_semaphores.push_back({ semaphore, 0 });
+     }
+@@ -4127,10 +4125,8 @@ vk_device ggml_vk_get_device(size_t idx) {
+         props2.pNext = &props3;
+         props3.pNext = &subgroup_props;
+         subgroup_props.pNext = &driver_props;
+-        driver_props.pNext = &vk11_props;
+-        vk11_props.pNext = &vk12_props;
+-
+-        VkBaseOutStructure * last_struct = (VkBaseOutStructure *)&vk12_props;
++        // s9 patch: Vulkan 1.1 driver doesn't fill VK11/VK12 props; subgroup info copied from subgroup_props below
++        VkBaseOutStructure * last_struct = (VkBaseOutStructure *)&driver_props;
+ 
+         if (maintenance4_support) {
+             last_struct->pNext = (VkBaseOutStructure *)&props4;
+@@ -4168,6 +4164,8 @@ vk_device ggml_vk_get_device(size_t idx) {
+         }
+ 
+         device->physical_device.getProperties2(&props2);
++        vk11_props.subgroupSupportedStages = subgroup_props.supportedStages;
++        vk11_props.subgroupSupportedOperations = subgroup_props.supportedOperations;
+         device->properties = props2.properties;
+         device->vendor_id = device->properties.vendorID;
+         device->driver_id = driver_props.driverID;
+@@ -4303,17 +4301,17 @@ vk_device ggml_vk_get_device(size_t idx) {
+         device_features2.pNext = nullptr;
+         device_features2.features = (VkPhysicalDeviceFeatures)device_features;
+ 
+-        VkPhysicalDeviceVulkan11Features vk11_features;
+-        vk11_features.pNext = nullptr;
+-        vk11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+-        device_features2.pNext = &vk11_features;
++        // s9 patch: Vulkan 1.1 driver (Mali r19), use KHR extension structs instead of VK11/VK12 core structs
++        VkPhysicalDeviceVulkan11Features vk11_features{};
++        VkPhysicalDeviceVulkan12Features vk12_features{};
++        VkPhysicalDevice16BitStorageFeatures s16_features{};
++        s16_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
++        VkPhysicalDeviceShaderFloat16Int8Features f16_features{};
++        f16_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
++        device_features2.pNext = &s16_features;
++        s16_features.pNext = &f16_features;
+ 
+-        VkPhysicalDeviceVulkan12Features vk12_features;
+-        vk12_features.pNext = nullptr;
+-        vk12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+-        vk11_features.pNext = &vk12_features;
+-
+-        last_struct = (VkBaseOutStructure *)&vk12_features;
++        last_struct = (VkBaseOutStructure *)&f16_features;
+ 
+         VkPhysicalDeviceInternallySynchronizedQueuesFeaturesKHR internally_synchronized_queues_features{};
+         internally_synchronized_queues_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INTERNALLY_SYNCHRONIZED_QUEUES_FEATURES_KHR;
+@@ -4471,6 +4469,9 @@ vk_device ggml_vk_get_device(size_t idx) {
+         }
+ 
+         vkGetPhysicalDeviceFeatures2(device->physical_device, &device_features2);
++        vk11_features.storageBuffer16BitAccess = s16_features.storageBuffer16BitAccess;
++        vk12_features.shaderFloat16 = f16_features.shaderFloat16;
++        vk12_features.shaderInt8 = f16_features.shaderInt8;
+ 
+         device->device_fault = device->device_fault && fault_features.deviceFault;
+ 
+@@ -4884,7 +4885,7 @@ vk_device ggml_vk_get_device(size_t idx) {
+             const uint32_t transfer_queue_index = compute_queue_family_index == transfer_queue_family_index ? 1 : 0;
+             device->transfer_queue = ggml_vk_create_queue(device, transfer_queue_family_index, transfer_queue_index, { vk::PipelineStageFlagBits::eTransfer }, true);
+ 
+-            device->async_use_transfer_queue = prefers_transfer_queue || (getenv("GGML_VK_ASYNC_USE_TRANSFER_QUEUE") != nullptr);
++            device->async_use_transfer_queue = false;  // s9 patch: needs timeline semaphores
+         } else {
+             device->transfer_queue = ggml_vk_create_aliased_queue(device, device->compute_queue);
+ 
+@@ -5025,18 +5026,18 @@ static void ggml_vk_print_gpu_info(size_t idx) {
+     device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+     device_features2.pNext = nullptr;
+ 
+-    VkPhysicalDeviceVulkan11Features vk11_features;
+-    vk11_features.pNext = nullptr;
+-    vk11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+-    device_features2.pNext = &vk11_features;
+-
+-    VkPhysicalDeviceVulkan12Features vk12_features;
+-    vk12_features.pNext = nullptr;
+-    vk12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+-    vk11_features.pNext = &vk12_features;
++    // s9 patch: Vulkan 1.1 driver (Mali r19), use KHR extension structs instead of VK11/VK12 core structs
++    VkPhysicalDeviceVulkan11Features vk11_features{};
++    VkPhysicalDeviceVulkan12Features vk12_features{};
++    VkPhysicalDevice16BitStorageFeatures s16_features{};
++    s16_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
++    VkPhysicalDeviceShaderFloat16Int8Features f16_features{};
++    f16_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
++    device_features2.pNext = &s16_features;
++    s16_features.pNext = &f16_features;
+ 
+     // Pointer to the last chain element
+-    last_struct = (VkBaseOutStructure *)&vk12_features;
++    last_struct = (VkBaseOutStructure *)&f16_features;
+ 
+ #if defined(GGML_VULKAN_COOPMAT_GLSLC_SUPPORT)
+     VkPhysicalDeviceCooperativeMatrixFeaturesKHR coopmat_features;
+@@ -5105,6 +5106,9 @@ static void ggml_vk_print_gpu_info(size_t idx) {
+ #endif
+ 
+     vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
++    vk11_features.storageBuffer16BitAccess = s16_features.storageBuffer16BitAccess;
++    vk12_features.shaderFloat16 = f16_features.shaderFloat16;
++    vk12_features.shaderInt8 = f16_features.shaderInt8;
+ 
+     fp16 = fp16 && vk12_features.shaderFloat16;
+ 
+@@ -5195,8 +5199,8 @@ void ggml_vk_instance_init() {
+ 
+     uint32_t api_version = vk::enumerateInstanceVersion();
+ 
+-    if (api_version < VK_API_VERSION_1_2) {
+-        GGML_LOG_ERROR("ggml_vulkan: Error: Vulkan 1.2 required.");
++    if (api_version < VK_API_VERSION_1_1) {  // s9 patch: was 1.2
++        GGML_LOG_ERROR("ggml_vulkan: Error: Vulkan 1.1 required.");
+         throw vk::SystemError(vk::Result::eErrorFeatureNotPresent, "Vulkan 1.2 required");
+     }
+ 
+@@ -5474,7 +5478,7 @@ void ggml_vk_init(ggml_backend_vk_context * ctx, size_t idx) {
+     if (ctx->device->async_use_transfer_queue) {
+         vk::SemaphoreTypeCreateInfo tci{ vk::SemaphoreType::eTimeline, 0 };
+         vk::SemaphoreCreateInfo ci{};
+-        ci.setPNext(&tci);
++        (void)tci;  // s9 patch: no timeline semaphores
+         ctx->transfer_semaphore.s = ctx->device->device.createSemaphore(ci);
+         ctx->transfer_semaphore.value = 0;
+ 
+@@ -5792,6 +5796,8 @@ void ggml_vk_ctx_begin(vk_device& device, vk_context& subctx) {
+ 
+     subctx->seqs.push_back({ ggml_vk_begin_submission(device, *subctx->p) });
+     subctx->s = subctx->seqs[subctx->seqs.size() - 1].data();
++    // s9 patch: no semaphores between submits, so order them against earlier work with a barrier
++    ggml_vk_sync_buffers(nullptr, subctx);
+ 
+     if (vk_instance.debug_utils_support) {
+         // outermost region, one per command buffer, so the gaps between submits stand out
+@@ -16079,7 +16085,7 @@ static ggml_backend_event_t ggml_backend_vk_device_event_new(ggml_backend_dev_t
+ 
+     vk::SemaphoreTypeCreateInfo tci{ vk::SemaphoreType::eTimeline, 0 };
+     vk::SemaphoreCreateInfo ci{};
+-    ci.setPNext(&tci);
++    (void)tci;  // s9 patch: no timeline semaphores
+     vkev->tl_semaphore = { device->device.createSemaphore(ci), 0 };
+ 
+     return new ggml_backend_event {
+@@ -16118,8 +16124,8 @@ static void ggml_backend_vk_device_event_synchronize(ggml_backend_dev_t dev, ggm
+     if (vkev->has_event) {
+         vk::Semaphore sem = vkev->tl_semaphore.s;
+         uint64_t val = vkev->tl_semaphore.value;
+-        vk::SemaphoreWaitInfo swi{vk::SemaphoreWaitFlags{}, sem, val};
+-        VK_CHECK(device->device.waitSemaphores(swi, UINT64_MAX), "event_synchronize", device);
++        (void)sem; (void)val;  // s9 patch: no timeline semaphores, wait for the queue instead
++        device->compute_queue->handle->lock(); device->compute_queue->handle->queue.waitIdle(); device->compute_queue->handle->unlock();
+ 
+         // Reset and move submitted events
+         for (auto& event : vkev->events_submitted) {
+@@ -16303,14 +16309,13 @@ bool ggml_vk_device_is_supported(const vk::PhysicalDevice & vkdev) {
+     VkPhysicalDeviceFeatures2 device_features2;
+     device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+ 
+-    VkPhysicalDeviceVulkan11Features vk11_features;
+-    vk11_features.pNext = nullptr;
+-    vk11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+-    device_features2.pNext = &vk11_features;
++    VkPhysicalDevice16BitStorageFeatures s16_features{};  // s9 patch: KHR struct for Vulkan 1.1
++    s16_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
++    device_features2.pNext = &s16_features;
+ 
+     vkGetPhysicalDeviceFeatures2(vkdev, &device_features2);
+ 
+-    return vk11_features.storageBuffer16BitAccess;
++    return s16_features.storageBuffer16BitAccess;
+ }
+ 
+ bool ggml_vk_khr_cooperative_matrix_support(const vk::PhysicalDeviceProperties& props, const vk::PhysicalDeviceDriverProperties& driver_props, vk_device_architecture arch) {
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/group_norm.comp b/ggml/src/ggml-vulkan/vulkan-shaders/group_norm.comp
+index bdf97db..bc5f5dd 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/group_norm.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/group_norm.comp
+@@ -4,7 +4,7 @@
+ #include "types.glsl"
+ 
+ #extension GL_EXT_control_flow_attributes : enable
+-#define BLOCK_SIZE 512
++#define BLOCK_SIZE 256   // s9 patch: Mali-G72 maxComputeWorkGroupInvocations = 384
+ 
+ layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
+ 
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/l2_norm.comp b/ggml/src/ggml-vulkan/vulkan-shaders/l2_norm.comp
+index 9039ed1..1235b51 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/l2_norm.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/l2_norm.comp
+@@ -4,7 +4,7 @@
+ #include "types.glsl"
+ 
+ #extension GL_EXT_control_flow_attributes : enable
+-#define BLOCK_SIZE 512
++#define BLOCK_SIZE 256   // s9 patch: Mali-G72 maxComputeWorkGroupInvocations = 384
+ 
+ layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
+ 
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/norm.comp b/ggml/src/ggml-vulkan/vulkan-shaders/norm.comp
+index 792012d..fb64465 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/norm.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/norm.comp
+@@ -4,7 +4,7 @@
+ #include "generic_unary_head.glsl"
+ 
+ #extension GL_EXT_control_flow_attributes : enable
+-#define BLOCK_SIZE 512
++#define BLOCK_SIZE 256   // s9 patch: Mali-G72 maxComputeWorkGroupInvocations = 384
+ 
+ layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
+ 
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm.comp b/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm.comp
+index 314c8e5..1b762b1 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm.comp
+@@ -39,7 +39,7 @@ layout (binding = 3) readonly buffer I {uvec2 data_i[];};
+ #endif
+ 
+ #extension GL_EXT_control_flow_attributes : enable
+-#define BLOCK_SIZE 512
++#define BLOCK_SIZE 256   // s9 patch: Mali-G72 maxComputeWorkGroupInvocations = 384
+ 
+ layout (constant_id = 1) const bool do_multiply = false;
+ #if RMS_NORM_ADD_FUSION
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm_back.comp b/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm_back.comp
+index 87707fc..c0a3cbc 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm_back.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/rms_norm_back.comp
+@@ -4,7 +4,7 @@
+ #include "types.glsl"
+ 
+ #extension GL_EXT_control_flow_attributes : enable
+-#define BLOCK_SIZE 512
++#define BLOCK_SIZE 256   // s9 patch: Mali-G72 maxComputeWorkGroupInvocations = 384
+ 
+ layout(local_size_x = BLOCK_SIZE, local_size_y = 1, local_size_z = 1) in;
+ 
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+index 42ddf48..cf7c3e4 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+@@ -348,7 +348,7 @@ compile_count_guard acquire_compile_slot() {
+ }
+ 
+ void string_to_spv_func(std::string name, std::string in_path, std::string out_path, std::map<std::string, std::string> defines, bool coopmat, bool dep_file, compile_count_guard slot) {
+-    std::string target_env = (name.find("_cm2") != std::string::npos) ? "--target-env=vulkan1.3" : "--target-env=vulkan1.2";
++    std::string target_env = (name.find("_cm2") != std::string::npos) ? "--target-env=vulkan1.3" : "--target-env=vulkan1.1";
+ 
+     #ifdef _WIN32
+         std::vector<std::string> cmd = {GLSLC, "-fshader-stage=compute", target_env, "\"" + in_path + "\"", "-o", "\"" + out_path + "\""};
+@@ -396,6 +396,12 @@ void string_to_spv_func(std::string name, std::string in_path, std::string out_p
+         // std::cout << std::endl;
+ 
+         int exit_code = execute_command(cmd, stdout_str, stderr_str);
++        if ((exit_code != 0 || !stderr_str.empty()) && cmd[2] == "--target-env=vulkan1.1") {
++            // s9 patch: shader needs SPIR-V 1.4+, build it for 1.2 (won't load on a 1.1 driver; only used by unneeded ops)
++            std::cerr << "s9: " << name << " needs vulkan1.2\n";
++            cmd[2] = "--target-env=vulkan1.2"; stdout_str.clear(); stderr_str.clear();
++            exit_code = execute_command(cmd, stdout_str, stderr_str);
++        }
+         if (exit_code != 0 || !stderr_str.empty()) {
+             std::cerr << "cannot compile " << name << " (exit code " << exit_code << ")\n\n";
+             for (const auto& part : cmd) {

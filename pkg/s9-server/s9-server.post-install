@@ -1,0 +1,25 @@
+#!/bin/sh
+S=/usr/share/s9-server
+
+# Files owned by other packages are shipped under $S and copied over theirs here.
+install -m644 $S/conf.d-docker /etc/conf.d/docker
+install -m644 $S/conf.d-tailscale /etc/conf.d/tailscale
+install -m644 $S/interfaces /etc/network/interfaces
+# Never overwrite Wi-Fi credentials entered later.
+grep -qs '^network=' /etc/wpa_supplicant/wpa_supplicant.conf || install -m600 $S/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
+
+# 4.9 kernel: no cgroup v2 BPF device control.
+grep -q '^rc_cgroup_mode=' /etc/rc.conf \
+	&& sed -i 's/^rc_cgroup_mode=.*/rc_cgroup_mode="legacy"/' /etc/rc.conf \
+	|| echo 'rc_cgroup_mode="legacy"' >> /etc/rc.conf
+
+
+# BT patch lookup path used by hciattach.
+ln -sf postmarketos/bcm4361B2_semco.hcd /lib/firmware/BCM4347B2.hcd
+
+rc-update add s9-bootlogo sysinit >/dev/null
+for s in networking s9-srv; do rc-update add $s boot >/dev/null; done
+for s in bluetooth hciattach docker tailscale ntpd local s9-dashboard s9-display s9-ttyd schedtune-off thermal-guard; do
+	rc-update add $s default >/dev/null
+done
+exit 0

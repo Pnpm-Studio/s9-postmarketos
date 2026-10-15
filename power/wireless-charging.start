@@ -1,0 +1,9 @@
+#!/bin/sh
+# Restore only an explicitly saved receiver setting; the driver defaults to enabled.
+[ -f /etc/s9/wireless ] || exit 0
+case "$(cat /etc/s9/wireless)" in
+    ENABLED=on) value=1 ;;
+    ENABLED=off) value=0 ;;
+    *) echo 'Invalid /etc/s9/wireless setting' >&2; exit 1 ;;
+esac
+printf '%s\n' "$value" > /sys/class/power_supply/battery/wc_control

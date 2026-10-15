@@ -1,0 +1,13 @@
+#!/sbin/openrc-run
+description="Galaxy S9 framebuffer touch status UI"
+supervisor=supervise-daemon
+command=/usr/bin/taskset    # little cores only (cpu0-3): keeps the big cluster free for real load
+command_args="0x0f /usr/bin/python3 /usr/local/lib/s9-display/display.py --exclusive-power-key"
+respawn_delay=5
+output_log=/var/log/s9-display.log
+error_log=/var/log/s9-display.log
+
+depend() {
+	need s9-dashboard
+	after msm-fb-refresher
+}

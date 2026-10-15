@@ -1,0 +1,12 @@
+#!/bin/sh
+# PC USB ports without a Type-C current advert get the stock 475 mA, less than the phone draws under load.
+# Raise those to 900 mA (USB 3 port rating); max77705 AICL still backs off if the port sags.
+# Type-C 1.5/3 A and wall chargers already get more from the kernel and are left alone.
+# The tune knob sets every cable type, but each attach reloads the stock table, so a charger plugged in later is unaffected.
+# The driver's store returns EINVAL even though the value is applied, hence 2>/dev/null.
+P=/sys/class/power_supply
+(while :; do
+	[ "$(cat $P/usb/online)" = 1 ] && [ "$(cat $P/usb/current_max)" -lt 900000 ] &&
+		echo 900 > $P/battery/batt_tune_input_charge_current 2>/dev/null
+	sleep 300
+done) >/dev/null 2>&1 &

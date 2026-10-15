@@ -1,0 +1,21 @@
+#!/sbin/openrc-run
+description="Galaxy S9 read-only status dashboard"
+supervisor=supervise-daemon
+command=/usr/bin/taskset    # little cores only (cpu0-3): keeps the big cluster free for real load
+command_args="0x0f /usr/bin/python3 /opt/s9-dashboard/server.py --port 8090"
+command_user=$(awk -F: '$3==10000{print $1}' /etc/passwd)   # pmOS default user
+directory=/opt/s9-dashboard
+respawn_delay=5
+output_log=/var/log/s9-dashboard.log
+error_log=/var/log/s9-dashboard.log
+
+depend() {
+	use net
+	after firewall tailscale
+}
+
+start_pre() {
+	# Docker card needs the docker socket; the user is created after package install, so join here.
+	addgroup "$command_user" docker 2>/dev/null
+	checkpath -f -o "$command_user" /var/log/s9-dashboard.log
+}

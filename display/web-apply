@@ -1,0 +1,13 @@
+#!/bin/sh
+# web-apply: which interfaces may reach the dashboard (port 8090), from /etc/s9/web (WEB master + LAN/TAILSCALE/USB=on|off, default on).
+# All off = SSH only (ssh -L 8090:127.0.0.1:8090). The service itself keeps running: the phone UI reads 127.0.0.1:8090. Never touches port 22.
+WEB=on LAN=on TAILSCALE=on USB=on
+[ -f /etc/s9/web ] && . /etc/s9/web
+T=iptables-legacy
+$T -N S9WEB 2>/dev/null; $T -F S9WEB
+[ "$WEB" = off ] && $T -A S9WEB ! -i lo -p tcp --dport 8090 -j DROP
+[ "$LAN" = off ] && $T -A S9WEB -i wlan0 -p tcp --dport 8090 -j DROP
+[ "$TAILSCALE" = off ] && $T -A S9WEB -i tailscale0 -p tcp --dport 8090 -j DROP
+[ "$USB" = off ] && $T -A S9WEB -i ncm0 -p tcp --dport 8090 -j DROP
+[ "$USB" = off ] && $T -A S9WEB -i rndis0 -p tcp --dport 8090 -j DROP
+$T -C INPUT -j S9WEB 2>/dev/null || $T -I INPUT 1 -j S9WEB

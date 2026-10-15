@@ -1,0 +1,4 @@
+#!/bin/sh
+# Apply the USB mode (default NCM 172.16.43.1 + ACM serial) at boot; replaces the
+# old usb-gadget-off.start. Runs in background so a USB hiccup can't stall boot.
+/usr/local/sbin/usb-net apply >/dev/null 2>&1 &

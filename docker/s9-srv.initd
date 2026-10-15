@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+# /srv = the USERDATA partition labelled s9-srv (Docker data-root lives there).
+# pmbootstrap writes /etc/fstab after package install, so the line is added here at boot.
+description="Mount the s9-srv partition on /srv"
+depend() { need localmount; before docker; }
+start() {
+	grep -q s9-srv /etc/fstab || echo 'LABEL=s9-srv /srv ext4 defaults,noatime,nofail 0 2' >> /etc/fstab
+	mkdir -p /srv
+	grep -q ' /srv ' /proc/mounts || mount /srv 2>/dev/null || ewarn "no s9-srv partition, /srv stays on rootfs"
+	return 0
+}

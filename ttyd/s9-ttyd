@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+# Browser terminal for the dashboard; /bin/login asks for a password.
+description="ttyd web terminal on :7681"
+command=/usr/bin/ttyd
+command_args="-p 7681 -I /run/s9-ttyd/index.html -W -t fontSize=15 -t fontFamily=S9NerdMono,monospace -t titleFixed=S9 /bin/login"
+command_background=true
+pidfile=/run/s9-ttyd.pid
+output_log=/var/log/s9-ttyd.log
+error_log=/var/log/s9-ttyd.log
+depend() { need net; }
+start_pre() { /usr/local/libexec/s9-ttyd-prepare-index; }

@@ -1,0 +1,123 @@
+--- a/drivers/soc/samsung/exynos-hotplug_governor.c
++++ b/drivers/soc/samsung/exynos-hotplug_governor.c
+@@ -29,7 +29,7 @@
+ 
+ #define DEFAULT_BOOT_ENABLE_MS (40000)		/* 40 s */
+ #define NUM_OF_GROUP	2
+-#define ATTR_COUNT	14
++#define ATTR_COUNT	15
+ 
+ #define LIT	0
+ #define BIG	1
+@@ -52,6 +52,7 @@
+ 	struct kobj_attribute	ldsum_heavy_thr;
+ 	struct kobj_attribute	cl_busy_ratio;
+ 	struct kobj_attribute	user_mode;
++	struct kobj_attribute	quad_freq;
+ 
+ 	struct attribute_group	attrib_group;
+ };
+@@ -104,6 +105,8 @@
+ 
+ 	int cal_id;
+ 	int maxfreq_table[5];
++	int quad_cap;		/* max freq with 3-4 big cores, sysfs quad_freq */
++	int quad_dt;		/* DT quad_freq, lowest quad_cap */
+ 	struct cpumask big_cpu_mask;
+ 
+ 	struct hpgov_load load_info[NUM_OF_GROUP];
+@@ -176,20 +179,20 @@
+ 	unsigned long max_freq;
+ 
+ 	if (!exynos_hpgov.enabled || exynos_hpgov.suspend)
+-		max_freq = exynos_hpgov.maxfreq_table[QUAD];
++		max_freq = exynos_hpgov.quad_cap;
+ 	else if (cpumask_weight(&exynos_hpgov.big_cpu_mask) == SINGLE)
+ 		max_freq = exynos_hpgov.maxfreq_table[SINGLE];
+ 	else if (cpumask_weight(&exynos_hpgov.big_cpu_mask) == DUAL)
+ 		max_freq = exynos_hpgov.maxfreq_table[DUAL];
+ 	else
+-		max_freq = exynos_hpgov.maxfreq_table[QUAD];
++		max_freq = exynos_hpgov.quad_cap;
+ 
+ 	return max_freq;
+ }
+ 
+ static void exynos_hpgov_set_boostable(void)
+ {
+-	unsigned long quad_freq = exynos_hpgov.maxfreq_table[QUAD];
++	unsigned long quad_freq = exynos_hpgov.quad_cap;
+ 
+ 	if ((exynos_hpgov.qos_max <= quad_freq) ||
+ 		exynos_hpgov.pol_max < quad_freq)
+@@ -926,6 +929,30 @@
+ 	return 0;
+ }
+ 
++static int exynos_hpgov_set_quad_freq(int val)
++{
++	struct cpumask mask;
++	int i;
++
++	if (val < exynos_hpgov.quad_dt || val > exynos_hpgov.maxfreq_table[SINGLE])
++		return -EINVAL;
++
++	/* exynos_hpgov_validate_*() BUG above the table: raise it before the cap, never lower it */
++	for (i = TRIPLE; i <= QUAD; i++)
++		exynos_hpgov.maxfreq_table[i] = max(exynos_hpgov.maxfreq_table[i], val);
++	exynos_hpgov.maxfreq_table[DISABLE] = exynos_hpgov.maxfreq_table[QUAD];
++	exynos_hpgov.quad_cap = val;
++	exynos_hpgov_set_boostable();
++
++	get_online_cpus();
++	cpumask_and(&mask, cpu_online_mask, cpu_coregroup_mask(4));
++	if (!cpumask_empty(&mask))
++		cpufreq_update_policy(cpumask_first(&mask));
++	put_online_cpus();
++
++	return 0;
++}
++
+ static int exynos_hpgov_set_single_change_ms(int val)
+ {
+ 	if (!(val >= 0))
+@@ -949,13 +976,13 @@
+ 	int ret = 0; \
+ 	int val; \
+ 	int old_val; \
+-	mutex_lock(&exynos_hpgov.attrib_lock); \
+ 	ret = kstrtoint(buf, 10, &val); \
+ 	if (ret) { \
+ 		pr_err("Invalid input %s for %s %d\n", \
+ 				buf, __stringify(_name), ret);\
+-		return 0; \
++		return ret; \
+ 	} \
++	mutex_lock(&exynos_hpgov.attrib_lock); \
+ 	old_val = _param; \
+ 	ret = exynos_hpgov_set_##_name(val); \
+ 	if (ret) { \
+@@ -987,6 +1014,7 @@
+ HPGOV_PARAM(single_change_ms, exynos_hpgov.single_change_ms);
+ HPGOV_PARAM(dual_change_ms, exynos_hpgov.dual_change_ms);
+ HPGOV_PARAM(quad_change_ms, exynos_hpgov.quad_change_ms);
++HPGOV_PARAM(quad_freq, exynos_hpgov.quad_cap);
+ 
+ static void hpgov_boot_enable(struct work_struct *work);
+ static DECLARE_DELAYED_WORK(hpgov_boot_work, hpgov_boot_enable);
+@@ -1106,6 +1134,7 @@
+ 	exynos_hpgov.maxfreq_table[QUAD] = min(freq, max_freq);
+ 
+ 	exynos_hpgov.maxfreq_table[DISABLE] = exynos_hpgov.maxfreq_table[QUAD];
++	exynos_hpgov.quad_cap = exynos_hpgov.quad_dt = exynos_hpgov.maxfreq_table[QUAD];
+ 
+ 	for (i = 0; i <= QUAD; i++)
+ 		pr_info("HP_GOV: mode %d: max_freq = %d\n",
+@@ -1181,6 +1210,7 @@
+ 	HPGOV_RW_ATTRIB(attr_count - (i_attr--), single_change_ms);
+ 	HPGOV_RW_ATTRIB(attr_count - (i_attr--), dual_change_ms);
+ 	HPGOV_RW_ATTRIB(attr_count - (i_attr--), quad_change_ms);
++	HPGOV_RW_ATTRIB(attr_count - (i_attr--), quad_freq);
+ 
+ 	exynos_hpgov.attrib.attrib_group.name = "governor";
+ 	ret = sysfs_create_group(exynos_cpu_hotplug_kobj(),

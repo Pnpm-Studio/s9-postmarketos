@@ -1,0 +1,20 @@
+maintainer="S9 <s9@example.org>"
+pkgname=s9-llama-vk
+pkgver=1
+pkgrel=0
+pkgdesc="Optional: llama.cpp (Android/NDK build, patched for Mali-G72 Vulkan 1.1) for mali-run"
+url="https://github.com/ggml-org/llama.cpp"
+arch="aarch64"
+license="MIT"
+depends="s9-mali"
+options="!check !fhs !strip !tracedeps"
+# s9-llama-vk-root.tar.gz holds prebuilt binaries staged by pkg/s9-llama-vk/stage.sh
+source="s9-llama-vk-root.tar.gz"
+builddir="$srcdir"
+
+package() {
+	mkdir -p "$pkgdir"
+	cp -a "$srcdir"/root/. "$pkgdir"/
+}
+
+sha512sums=""

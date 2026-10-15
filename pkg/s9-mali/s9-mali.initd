@@ -1,0 +1,16 @@
+#!/sbin/openrc-run
+# Bind mounts for the Android Mali blob root used by mali-run (/srv/models shows up as /models).
+description="Mali-G72 blob root (Vulkan/OpenCL via bionic chroot)"
+R=/usr/lib/s9-mali/root
+depend() { need localmount; after s9-srv; }
+start() {
+	for m in dev proc sys; do
+		mountpoint -q $R/$m || mount --bind /$m $R/$m || return 1
+	done
+	mkdir -p /srv/models
+	mountpoint -q $R/models || mount --bind /srv/models $R/models
+}
+stop() {
+	for m in models sys proc dev; do mountpoint -q $R/$m && umount $R/$m; done
+	return 0
+}

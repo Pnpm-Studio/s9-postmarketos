@@ -1,0 +1,4 @@
+#!/bin/sh
+# Charge cap (~70%) for 24/7 plugged-in use. On unless /etc/s9/store_mode says 0 (toggled on the phone's Power page).
+# The Samsung driver only accepts 1: store_mode cannot be cleared at runtime, so "off" just stops setting it at boot.
+[ "$(cat /etc/s9/store_mode 2>/dev/null)" = 0 ] || echo 1 > /sys/class/power_supply/battery/store_mode

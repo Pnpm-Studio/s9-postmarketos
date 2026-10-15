@@ -1,0 +1,24 @@
+#!/bin/sh
+# Usage: wifi-setup SSID [PASSWORD]   (open network without PASSWORD). Rewrites the wpa_supplicant config and restarts Wi-Fi.
+# Test overrides: WPA_CONF=/tmp/x WIFI_RESTART=0
+set -eu
+[ $# -ge 1 ] && [ $# -le 2 ] || { echo "usage: wifi-setup SSID [PASSWORD]" >&2; exit 2; }
+CONF=${WPA_CONF:-/etc/wpa_supplicant/wpa_supplicant.conf}
+umask 077
+{
+    echo "ctrl_interface=/run/wpa_supplicant"
+    echo "update_config=1"
+    if [ $# -eq 2 ]; then
+        wpa_passphrase "$1" "$2"
+    else
+        printf 'network={\n\tssid="%s"\n\tkey_mgmt=NONE\n}\n' "$1"
+    fi
+} > "$CONF.new"
+chmod 600 "$CONF.new"
+mv "$CONF.new" "$CONF"
+echo "wrote $CONF"
+[ "${WIFI_RESTART:-1}" = 1 ] || exit 0
+pkill -f 'wpa_supplicant.* -i wlan0' || true
+pkill -f 'udhcpc -i wlan0' || true
+sleep 1
+exec /etc/local.d/wifi.start

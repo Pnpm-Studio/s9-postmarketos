@@ -1,0 +1,60 @@
+maintainer="S9 <s9@example.org>"
+pkgname=s9-server
+pkgver=1
+pkgrel=0
+pkgdesc="Headless-server setup for the Samsung Galaxy S9 (dashboard, touch UI, web terminal, Docker, firewall)"
+url="https://postmarketos.org"
+arch="aarch64"
+license="MIT"
+depends="
+	alsa-utils
+	bash
+	bash-completion
+	bluez
+	bluez-deprecated
+	crun
+	device-samsung-starlte-nonfree-firmware
+	device-samsung-starlte-nonfree-firmware-openrc
+	s9-mali
+	docker
+	docker-cli-compose
+	docker-openrc
+	dropbear-scp
+	evtest
+	fastfetch
+	fd
+	font-droid
+	font-jetbrains-mono-nerd
+	font-nerd-fonts-symbols
+	font-opensans
+	fzf
+	gawk
+	git
+	i2c-tools
+	ip6tables
+	iptables
+	iptables-legacy
+	iw
+	pam-rundir
+	py3-pillow
+	py3-pyte
+	python3
+	starship
+	tailscale
+	tailscale-openrc
+	tmux
+	ttyd
+	wpa_supplicant
+"
+options="!check !fhs"
+install="$pkgname.post-install $pkgname.post-upgrade"
+# s9-server-root.tar.gz is the file tree assembled from the repo by pkg/s9-server/stage.sh
+source="s9-server-root.tar.gz"
+builddir="$srcdir"
+
+package() {
+	mkdir -p "$pkgdir"
+	cp -a "$srcdir"/root/. "$pkgdir"/
+}
+
+sha512sums=""

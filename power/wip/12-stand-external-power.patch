@@ -1,0 +1,182 @@
+UNACCEPTED WIP - DO NOT BUILD OR DEPLOY.
+Host protection check fails: CHARGE_DISABLE rewrites CHARGING to CHARGING_OFF
+before the new cap guard, allowing an existing BUCK_OFF state to be overwritten.
+Connected protection review and kernel validation are unfinished.
+
+--- a/drivers/battery_v2/sec_battery.c
++++ b/drivers/battery_v2/sec_battery.c
+@@ -931,6 +931,29 @@
+ 	return 0;
+ }
+ 
++/* Store mode stops battery charging, not the external power buck. */
++static bool sec_bat_store_mode_hold(struct sec_battery_info *battery)
++{
++	if (!battery->store_mode || is_nocharge_type(battery->cable_type))
++		battery->store_charge_paused = false;
++	else if (battery->capacity >= STORE_MODE_CHARGING_MAX)
++		battery->store_charge_paused = true;
++	return battery->store_charge_paused;
++}
++
++static bool sec_bat_store_mode_healthy(struct sec_battery_info *battery)
++{
++	return battery->health == POWER_SUPPLY_HEALTH_GOOD &&
++		!is_slate_mode(battery) && !battery->is_abnormal_temp &&
++		!battery->is_sysovlo && !battery->is_vbatovlo &&
++		!(battery->misc_event & (BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE |
++			BATT_MISC_EVENT_HICCUP_TYPE)) &&
++		!(battery->current_event & (SEC_BAT_CURRENT_EVENT_CHARGE_DISABLE |
++			SEC_BAT_CURRENT_EVENT_VBAT_OVP | SEC_BAT_CURRENT_EVENT_VSYS_OVP));
++}
++
++static void sec_bat_set_charging_status(struct sec_battery_info *battery, int status);
++
+ int sec_bat_set_charge(struct sec_battery_info *battery,
+ 			int chg_mode)
+ {
+@@ -945,6 +968,21 @@
+ 		(chg_mode == SEC_BAT_CHG_MODE_CHARGING)) {
+ 		dev_info(battery->dev, "%s: charge disable by HMT\n", __func__);
+ 		chg_mode = SEC_BAT_CHG_MODE_CHARGING_OFF;
++	}
++
++	/* Gate every restart path, including cable and protection recovery. */
++	if (sec_bat_store_mode_hold(battery) && chg_mode == SEC_BAT_CHG_MODE_CHARGING) {
++		sec_bat_set_charging_status(battery, POWER_SUPPLY_STATUS_NOT_CHARGING);
++		if (!sec_bat_store_mode_healthy(battery)
++#if defined(CONFIG_BATTERY_SWELLING)
++		    || battery->swelling_mode != SWELLING_MODE_NONE
++#endif
++		   )
++			return 0;
++		chg_mode = SEC_BAT_CHG_MODE_CHARGING_OFF;
++		/* Repeated recovery requests must not reset thermal counters. */
++		if (battery->charger_mode == chg_mode)
++			return 0;
+ 	}
+ 
+ 	battery->charger_mode = chg_mode;
+@@ -1128,6 +1166,10 @@
+ static void sec_bat_set_charging_status(struct sec_battery_info *battery,
+ 		int status) {
+ 	union power_supply_propval value = {0, };
++
++	if ((status == POWER_SUPPLY_STATUS_CHARGING || status == POWER_SUPPLY_STATUS_FULL) &&
++	    sec_bat_store_mode_hold(battery))
++		status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+ 
+ 	switch (status) {
+ 	case POWER_SUPPLY_STATUS_CHARGING:
+@@ -1533,7 +1575,8 @@
+ 	/* swelling_mode
+ 		under voltage over voltage, battery missing */
+ 	if ((battery->status == POWER_SUPPLY_STATUS_DISCHARGING) ||\
+-	    (battery->status == POWER_SUPPLY_STATUS_NOT_CHARGING) ||
++	    (battery->status == POWER_SUPPLY_STATUS_NOT_CHARGING &&
++	     !(battery->store_charge_paused && sec_bat_store_mode_healthy(battery))) ||
+ 	    battery->skip_swelling) {
+ 		pr_debug("%s: DISCHARGING or NOT-CHARGING or 15 test mode. stop swelling mode\n", __func__);
+ 		battery->swelling_mode = SWELLING_MODE_NONE;
+@@ -2055,6 +2098,7 @@
+ 	} else {
+ 		/* if recovered from not charging */
+ 		if ((battery->health == POWER_SUPPLY_HEALTH_GOOD) &&
++			(!battery->store_charge_paused || battery->is_abnormal_temp) &&
+ 			(battery->status ==
+ 			 POWER_SUPPLY_STATUS_NOT_CHARGING)) {
+ 			battery->is_abnormal_temp = false;
+@@ -3599,6 +3643,7 @@
+ 		sec_bat_wc_cv_mode_check(battery);
+ 
+ continue_monitor:
++	sec_bat_store_mode_hold(battery);
+ 	/* clear HEATING_CONTROL*/
+ 	sec_bat_set_current_event(battery, 0, SEC_BAT_CURRENT_EVENT_SKIP_HEATING_CONTROL);
+ 
+@@ -3665,23 +3710,21 @@
+ 			 "%s: @battery->capacity = (%d), battery->status= (%d), battery->store_mode=(%d)\n",
+ 			 __func__, battery->capacity, battery->status, battery->store_mode);
+ 
+-		if (battery->capacity >= STORE_MODE_CHARGING_MAX) {
+-			int chg_mode = battery->misc_event &
+-				(BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE | BATT_MISC_EVENT_HICCUP_TYPE) ?
+-					SEC_BAT_CHG_MODE_BUCK_OFF : SEC_BAT_CHG_MODE_CHARGING_OFF;
+-			/* to discharge the battery, off buck */
+-			if (battery->capacity > STORE_MODE_CHARGING_MAX)
+-				chg_mode = SEC_BAT_CHG_MODE_BUCK_OFF;
+-
+-			sec_bat_set_charging_status(battery,
+-						    POWER_SUPPLY_STATUS_DISCHARGING);
+-			sec_bat_set_charge(battery, chg_mode);
+-		}
+-
+-		if ((battery->capacity <= STORE_MODE_CHARGING_MIN) && (battery->status == POWER_SUPPLY_STATUS_DISCHARGING)) {
+-			sec_bat_set_charging_status(battery,
+-						    POWER_SUPPLY_STATUS_CHARGING);
+-			sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING);
++		if (sec_bat_store_mode_hold(battery) && sec_bat_store_mode_healthy(battery)
++#if defined(CONFIG_BATTERY_SWELLING)
++		    && battery->swelling_mode == SWELLING_MODE_NONE
++#endif
++		   ) {
++			if (battery->capacity <= STORE_MODE_CHARGING_MIN) {
++				battery->store_charge_paused = false;
++				sec_bat_set_charging_status(battery, POWER_SUPPLY_STATUS_CHARGING);
++				sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING);
++			} else {
++				if (battery->status != POWER_SUPPLY_STATUS_NOT_CHARGING)
++					sec_bat_set_charging_status(battery, POWER_SUPPLY_STATUS_NOT_CHARGING);
++				if (battery->charger_mode != SEC_BAT_CHG_MODE_CHARGING_OFF)
++					sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING_OFF);
++			}
+ 		}
+ 	}
+ 	power_supply_changed(battery->psy_bat);
+@@ -3864,6 +3907,28 @@
+ 	} else
+ 		current_cable_type = battery->wire_status;
+ 
++	/* Prefer known USB supplies; retain negotiated input-current limits. */
++	if (battery->store_mode) {
++		switch (battery->wire_status) {
++		case SEC_BATTERY_CABLE_PREPARE_TA:
++		case SEC_BATTERY_CABLE_TA:
++		case SEC_BATTERY_CABLE_USB:
++		case SEC_BATTERY_CABLE_USB_CDP:
++		case SEC_BATTERY_CABLE_9V_TA:
++		case SEC_BATTERY_CABLE_9V_ERR:
++		case SEC_BATTERY_CABLE_9V_UNKNOWN:
++		case SEC_BATTERY_CABLE_12V_TA:
++		case SEC_BATTERY_CABLE_QC20:
++		case SEC_BATTERY_CABLE_QC30:
++		case SEC_BATTERY_CABLE_PDIC:
++		case SEC_BATTERY_CABLE_HV_TA_CHG_LIMIT:
++			current_cable_type = battery->wire_status;
++			break;
++		default:
++			break;
++		}
++	}
++
+ 	if (battery->wc_status) {
+ 		/* wired charger has priority, but wireless charger exist. */
+ 		val.intval = is_wired_type(current_cable_type) ?
+@@ -3950,6 +4015,7 @@
+ 		pr_info("%s: WC CONTROL: Enable", __func__);
+ 
+ 		/* initialize all status */
++		battery->store_charge_paused = false;
+ 		battery->charging_mode = SEC_BATTERY_CHARGING_NONE;
+ 		battery->vbus_chg_by_siop = SEC_INPUT_VOLTAGE_0V;
+ 		battery->vbus_chg_by_full = false;
+--- a/drivers/battery_v2/include/sec_battery.h
++++ b/drivers/battery_v2/include/sec_battery.h
+@@ -398,6 +398,7 @@
+ 	int test_mode;
+ 	bool factory_mode;
+ 	bool store_mode;
++	bool store_charge_paused;
+ 
+ 	/* MTBF test for CMCC */
+ 	bool is_hc_usb;

@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Notification sounds on the S9: s9-chime alert|low|test (thermal event, low battery, UI test).
+Quiet on purpose; the Audio page volume scales them. Does nothing when audio is off (or THERMAL=off for alert), the DSP is down or the PCM
+is busy. Routing and firmware come from `s9-audio apply`. As root or group audio."""
+import math, struct, subprocess, sys
+
+RATE = 48000
+CONF = '/etc/s9/audio'
+# name -> [(Hz or 0 for a gap, seconds, dBFS)]; each tone decays like a soft bell
+SOUNDS = {
+    'alert': [(880, .12, -20), (0, .1, 0), (880, .12, -20), (0, .1, 0), (880, .12, -20)],
+    'low': [(659, .35, -26), (523, .5, -26)],
+    'test': [(440, 1, -20)],
+}
+
+
+def pcm(parts, vol=60):
+    # the amp resets its Digital Volume when a stream starts, so VOL scales the samples: 60 = as listed, ±0.5 dB per %
+    gain = (vol - 60) / 2
+    out = [0] * int(RATE * .15)  # lead-in: the amp powers up when the I2S clock starts
+    for hz, secs, db in parts:
+        n, a = int(RATE * secs), 10 ** (min(-3, db + gain) / 20) * 32767 if vol else 0
+        for i in range(n):
+            env = min(1, i / 480, (n - i) / 480) * math.exp(-3 * i / n)
+            out.append(int(a * env * math.sin(2 * math.pi * hz * i / RATE)) if hz else 0)
+    return b''.join(struct.pack('<hh', s, s) for s in out)
+
+
+def conf(path=CONF):
+    c = {'AUDIO': 'on', 'VOL': '60', 'THERMAL': 'on'}                  # s9-audio's defaults
+    try:
+        c.update(w.split('=', 1) for w in open(path).read().split() if '=' in w)
+    except OSError:
+        pass
+    return c
+
+
+def enabled(name='test', path=CONF):
+    c = conf(path)
+    return c['AUDIO'] != 'off' and not (name == 'alert' and c['THERMAL'] == 'off')
+
+
+def play(name):
+    if not enabled(name):
+        return False
+    p = subprocess.run(['timeout', '-s', 'KILL', '10', 'aplay', '-q', '-D', 'hw:0,0', '-t', 'raw',
+                        '-f', 'S16_LE', '-r', str(RATE), '-c', '2'], input=pcm(SOUNDS[name], int(conf()['VOL'])), capture_output=True)
+    return p.returncode == 0
+
+
+if __name__ == '__main__':
+    if sys.argv[1:] == ['--selftest']:
+        b = pcm(SOUNDS['low'])
+        assert len(b) == 4 * (int(RATE * .15) + int(RATE * .35) + int(RATE * .5))
+        assert max(abs(s) for s in struct.unpack(f'<{len(b) // 2}h', b)) <= 10 ** (-26 / 20) * 32767 + 1
+        peak = lambda b: max(abs(x) for x in struct.unpack(f'<{len(b) // 2}h', b))
+        assert peak(pcm(SOUNDS['test'], 20)) < peak(pcm(SOUNDS['test'], 60)) < peak(pcm(SOUNDS['test'], 100))
+        assert peak(pcm(SOUNDS['test'], 0)) == 0
+        import tempfile
+        with tempfile.NamedTemporaryFile('w', suffix='audio') as f:
+            f.write('AUDIO=off\nOUT=speaker\n'); f.flush()
+            assert not enabled('test', f.name) and conf(f.name)['VOL'] == '60'
+            f.seek(0); f.truncate(); f.write('THERMAL=off\n'); f.flush()
+            assert not enabled('alert', f.name) and enabled('low', f.name)
+        assert enabled('alert', '/nonexistent')
+        print('s9-chime ok')
+    elif len(sys.argv) == 2 and sys.argv[1] in SOUNDS:
+        sys.exit(0 if play(sys.argv[1]) else 1)
+    else:
+        sys.exit('usage: s9-chime ' + '|'.join(SOUNDS))

@@ -1,0 +1,30 @@
+--- a/drivers/battery_v2/mfc_charger.c
++++ b/drivers/battery_v2/mfc_charger.c
+@@ -2464,6 +2464,10 @@
+ 	u8 pad_mode;
+ 	u8 vrect;
+ 
++	wc_w_state = gpio_get_value(charger->pdata->wpc_det);
++	if (charger->wc_w_state == wc_w_state)
++		return;
++
+ 	mfc_get_chip_id(charger);
+ 	pr_info("%s : first chip_id read(%d)\n", __func__, charger->chip_id);
+ 	if (charger->chip_id == MFC_CHIP_LSI) {
+@@ -2484,7 +2488,7 @@
+ 
+ 	if (charger->is_mst_on == MST_MODE_2) {
+ 		pr_info("%s: check wpc-state(%d - %d)\n", __func__,
+-			charger->wc_w_state, gpio_get_value(charger->pdata->wpc_det));
++			charger->wc_w_state, wc_w_state);
+ 
+ 		if (charger->wc_w_state == 0) {
+ 			pr_info("%s: skip wpc_det_work for MST operation\n", __func__);
+@@ -2494,7 +2498,6 @@
+ 
+ 	wake_lock(&charger->wpc_wake_lock);
+ 	pr_info("%s\n", __func__);
+-	wc_w_state = gpio_get_value(charger->pdata->wpc_det);
+ 
+ 	if ((charger->wc_w_state == 0) && (wc_w_state == 1)) {
+ 		charger->pdata->vout_status = MFC_VOUT_5V;

@@ -1,0 +1,28 @@
+#!/bin/sh
+# wifi-ip apply          (re)configure wlan0 from /etc/s9/wifi-ip: METHOD=dhcp|static, SSID, ADDR, GW, DNS. No file = DHCP.
+# wifi-ip <udhcpc event>  udhcpc -s hook: stock default.script, then the DNS override.
+# Static only applies while associated to SSID (a static address for one network would break another).
+IF=wlan0; CONF=${WIFI_IP_CONF:-/etc/s9/wifi-ip}
+[ -f "$CONF" ] && . "$CONF"
+dns() {
+    [ -n "$DNS" ] || return 0
+    for s in $DNS; do echo "nameserver $s"; done > /etc/resolv.conf.new && mv /etc/resolv.conf.new /etc/resolv.conf
+}
+case "$1" in
+apply)
+    for i in $(seq 20); do wpa_cli -i $IF status 2>/dev/null | grep -q wpa_state=COMPLETED && break; sleep 1; done
+    cur=$(wpa_cli -i $IF status 2>/dev/null | sed -n 's/^ssid=//p')
+    pkill -f "udhcpc -i $IF"; sleep 1
+    if [ "$METHOD" = static ] && [ -n "$ADDR" ] && { [ -z "$SSID" ] || [ "$SSID" = "$cur" ]; }; then
+        ip addr flush dev $IF
+        ip addr add "$ADDR" dev $IF
+        [ -n "$GW" ] && ip route replace default via "$GW" dev $IF
+        dns
+    else
+        exec udhcpc -i $IF -b -x "hostname:$(hostname)" -p /run/udhcpc.$IF.pid -s "$0" >/dev/null 2>&1 </dev/null
+    fi ;;
+bound|renew|deconfig|leasefail|nak)
+    /usr/share/udhcpc/default.script "$@"
+    case "$1" in bound|renew) dns ;; esac ;;
+*) echo "usage: wifi-ip apply" >&2; exit 2 ;;
+esac

@@ -1,0 +1,13 @@
+--- a/drivers/soc/samsung/acpm/acpm_ipc.c
++++ b/drivers/soc/samsung/acpm/acpm_ipc.c
+@@ -615,6 +615,10 @@
+ 				check_response(channel, cfg)) {
+ 			now = sched_clock();
+ 			if (timeout < now) {
++				/* preempted or slept past the deadline: the reply may be in, look once more */
++				if ((__raw_readl(acpm_ipc->intr + INTSR1) & (1 << channel->id)) &&
++						!check_response(channel, cfg))
++					break;
+ 				if (retry_cnt++ < 5) {
+ 					pr_err("acpm_ipc timeout retry %d"
+ 						"now = %llu,"

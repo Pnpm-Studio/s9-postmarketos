@@ -1,0 +1,3 @@
+#!/bin/sh
+rc-update add s9-mali default >/dev/null
+exit 0

@@ -1,0 +1,14 @@
+#!/bin/sh
+# bt-apply: apply /etc/s9/bluetooth (POWER=on|off default on, VISIBLE=on|off default off, ALIAS=name, default "Galaxy S9 (host)") to bluetoothd. Idempotent; run at boot and by the UI.
+POWER=on VISIBLE=off ALIAS="Galaxy S9 ($(hostname))"
+[ -f /etc/s9/bluetooth ] && . /etc/s9/bluetooth
+for i in $(seq 30); do bluetoothctl show 2>/dev/null | grep -q '^Controller' && break; sleep 1; done
+[ -n "$ALIAS" ] && bluetoothctl system-alias "$ALIAS" >/dev/null
+if [ "$POWER" = off ]; then bluetoothctl power off >/dev/null; exit 0; fi
+# right after boot the controller is listed before hciattach finished the firmware: retry
+for i in $(seq 10); do bluetoothctl power on >/dev/null; bluetoothctl show | grep -q 'Powered: yes' && break; sleep 2; done
+if [ "$VISIBLE" = on ]; then
+    bluetoothctl discoverable-timeout 0 >/dev/null; bluetoothctl pairable on >/dev/null; bluetoothctl discoverable on >/dev/null
+else
+    bluetoothctl discoverable off >/dev/null; bluetoothctl pairable off >/dev/null
+fi

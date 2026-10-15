@@ -1,0 +1,3 @@
+#!/bin/sh
+# /etc/local.d/: route audio and load the abox DSP firmware once the rootfs is up (the kernel's boot-time request fails)
+/usr/local/bin/s9-audio apply >/var/log/s9-audio.log 2>&1 &

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Galaxy S9 · System dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%226%22%20fill%3D%22%23153d5a%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%2365e0da%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M23%2012V27H5V9H19%22%2F%3E%3Cpath%20d%3D%22M12%2015L15%2013V23M12%2023H18M25%203V11M21%207H29%22%20stroke-linecap%3D%22square%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+  <style>
+    :root{color-scheme:dark;--bg:#090c11;--panel:#111720;--line:#263241;--text:#e8eef5;--muted:#b0bccb;--faint:#8693a3;--blue:#69b5ff;--cyan:#65e0da;--green:#7ce6a6;--amber:#ffcb70;--red:#ff7d79;--radius:12px}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% -12%,#14304a 0,transparent 36%),radial-gradient(ellipse at 100% 0,#102525 0,transparent 30%),var(--bg);color:var(--text);font:13px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+    .wrap{max-width:1500px;margin:auto;padding:12px 14px 16px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}.brand{display:flex;align-items:center;gap:10px}.mark{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(140deg,#153d5a,#182d3b);border:1px solid #28516b;color:var(--cyan)}.mark svg{width:20px;height:20px}.eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}h1{font-size:16px;line-height:1.1;margin:2px 0 0;letter-spacing:-.02em}
+    .topright{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}.live{display:flex;align-items:center;gap:6px}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #7ce6a688}
+    .action{border:1px solid var(--line);background:#111923;color:var(--text);border-radius:8px;padding:5px 9px;cursor:pointer;font:inherit}.action:hover{border-color:#52738e;background:#172331}
+    .termtools{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap}.termfont{display:flex;align-items:center;gap:4px}.termfont-value{min-width:4ch;text-align:center;font-variant-numeric:tabular-nums;color:var(--muted)}#term-card .cardhead{flex-wrap:wrap;align-items:flex-start}.termresize{width:100%;height:60vh;min-height:240px;max-height:90vh;resize:vertical;overflow:hidden;border-radius:8px;background:#000}#term{display:block;width:100%;height:100%;border:0;background:#000}#term-card:fullscreen{display:flex;flex-direction:column;width:100vw;height:100vh;max-width:none;margin:0!important;border-radius:0;overflow:hidden}#term-card:fullscreen .cardhead{flex:none}#term-card:fullscreen .termresize{flex:1;height:auto;min-height:0;max-height:none;resize:none}
+    .kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:10px}.tile.wide{grid-column:span 2}.wide .cores{height:30px;gap:4px}
+    .main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;align-items:stretch}.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+    .card{background:linear-gradient(145deg,#141b24ee,#0f151dee);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;min-width:0;box-shadow:0 6px 20px #0002}
+    .tile{display:flex;flex-direction:column;gap:5px}.label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.11em;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .value-row{display:flex;align-items:baseline;gap:5px}.value{font-size:24px;font-weight:700;letter-spacing:-.05em;line-height:1.05}.unit{color:var(--muted);font-size:12px}
+    .sub{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sub:empty{display:none}.tile .sub{white-space:pre-line;line-height:1.35}
+    .bar{height:4px;background:#273241;border-radius:8px;overflow:hidden}.bar span{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .35s ease}.bar[hidden]{display:none}.bar.stack{display:flex}.bar.stack span{border-radius:0}.bar span.cache{background:#4b5b70}
+    .batteryline{display:flex;align-items:center;gap:9px}.batterybox{height:22px;width:40px;border:1.5px solid #74869a;border-radius:6px;padding:2px;position:relative;flex:none}.batterybox:after{content:"";position:absolute;width:3px;height:8px;border-radius:0 3px 3px 0;background:#74869a;right:-5px;top:5px}.batteryfill{height:100%;width:0;background:var(--green);border-radius:3px;transition:width .35s}
+    .cores{display:flex;gap:3px;align-items:flex-end;height:18px}.core{flex:1;height:100%;background:#273241;border-radius:2px;position:relative;overflow:hidden}.core b{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,var(--blue),var(--cyan))}.core.off{opacity:.3}.core.gap{margin-left:8px}.gcores{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;margin-top:6px}.gcores .core{height:8px}
+    .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.cardhead h3{font-size:12px;margin:0;font-weight:650;text-transform:uppercase;letter-spacing:.08em}.chip{font-size:10px;padding:2px 8px;border-radius:999px;background:#1a2830;color:var(--cyan);border:1px solid #29434b;white-space:nowrap}.chips{display:flex;gap:6px;flex-wrap:wrap}
+    .muted{color:var(--muted)}.error{color:var(--amber)!important}
+    .details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.detail span{display:block}.detail .k{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em}.detail .v{font-size:13px;margin-top:1px;overflow-wrap:anywhere}
+    .chg{display:flex;align-items:center;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);flex-wrap:wrap}.chg .k{color:var(--faint);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-right:auto}.chgval{min-width:4.5em;text-align:center;font-variant-numeric:tabular-nums}
+    .temps{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}.temp{border:1px solid #222e3b;background:#101720;border-radius:8px;padding:6px 8px}.temp .k{font-size:11px;color:var(--muted)}.temp .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}.temp .lim{font-size:11px;color:var(--faint);margin-left:4px;font-weight:400}.temp .smallbar{margin-top:4px}.temp.warm .v{color:var(--amber)}.temp.hot .v{color:var(--red)}
+    .netmain{display:flex;align-items:center;gap:10px;margin-bottom:8px}.signal{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:#18252e;border:1px solid #29424b;color:var(--cyan);font-size:12px;font-weight:700;flex:none}.ssid{font-size:15px;font-weight:680;letter-spacing:-.02em;overflow-wrap:anywhere;line-height:1.2}
+    #access{display:flex;flex-direction:column;gap:3px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px}#access a{color:var(--blue);text-decoration:none;overflow-wrap:anywhere}#access a:hover{text-decoration:underline}#access .n{display:inline-block;min-width:68px;color:var(--faint);font-size:10px;text-transform:uppercase;letter-spacing:.1em}
+    .sshrow{display:flex;align-items:center;gap:8px;margin-top:8px}.sshrow .sub{white-space:normal}
+    .proc-card{flex:1;display:flex;flex-direction:column}.ptools{display:flex;gap:6px;margin-bottom:8px}.ptools input{flex:1;min-width:0}
+    .row.part{grid-template-columns:minmax(0,1fr) 9ch minmax(60px,1fr) 18ch}.row.part.unmounted{opacity:.55}
+    .rows{display:flex;flex-direction:column;gap:6px}.row{display:grid;grid-template-columns:minmax(0,1fr) 48px 7ch 10ch;align-items:center;gap:10px;font-size:12px}.row.proc{grid-template-columns:minmax(0,1fr) 48px 7ch 10ch 54px}
+    .rowname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d7e0e9}.smallbar{height:4px;min-width:46px;border-radius:9px;background:#26313e;overflow:hidden}.smallbar i{display:block;height:100%;background:var(--blue);border-radius:9px}.rowval{font-variant-numeric:tabular-nums;text-align:right;color:var(--muted);white-space:nowrap}.rowheader{font-size:10px;color:var(--faint);padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em}.empty{padding:8px 0;color:var(--muted);font-size:12px}
+    .containers{display:flex;flex-direction:column;gap:5px;max-height:232px;overflow:auto}.container-state{font-size:10px;color:var(--muted);text-align:right;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.container .cbtns{grid-column:auto!important;margin:0!important}.container{display:grid;grid-template-columns:8px minmax(0,1fr) auto auto;align-items:center;gap:8px;border:1px solid #222e3b;background:#101720;border-radius:8px;padding:6px 8px}.state-dot{height:7px;width:7px;border-radius:50%;background:var(--green)}.container-name{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.container-meta{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cbtns{display:flex;gap:4px}
+    .act-btn{font:inherit;font-size:10px;color:#e8eef5;background:#1a2430;border:1px solid #3a4a5c;border-radius:6px;padding:2px 7px;cursor:pointer}.act-btn:hover:not(:disabled){border-color:var(--amber);color:var(--amber)}.act-btn:disabled{opacity:.35;cursor:not-allowed}.act-btn.danger{color:var(--red);border-color:var(--red)}
+    .footer{margin-top:8px;color:var(--faint);font-size:11px}
+    @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+    @media(max-width:600px){.wrap{padding:10px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.topright .last{display:none}.top{flex-wrap:wrap}.topright{width:100%;justify-content:space-between}.row.proc{grid-template-columns:minmax(0,1fr) 36px 6ch 9ch 48px;gap:6px}.details{gap:6px}}
+  </style>
+<!-- phone view -->
+<script>if(location.hash === '#phone')document.documentElement.classList.add('phone');</script>
+<style>/* Activated by #phone. Physical panel: 1080 x 1920, portrait; read-only. */
+html.phone .wrap{max-width:540px;padding:14px;font-size:14px}
+html.phone .topright .last,html.phone .action,html.phone .footer,html.phone .eyebrow,html.phone #wifi-state,html.phone .chg,html.phone .cbtns,html.phone .act-btn,html.phone .sshrow,html.phone #access,html.phone #battery-card,html.phone .ptools,html.phone #process-summary,html.phone .container-meta,html.phone .container:nth-child(n+3){display:none}
+html.phone .top{flex-wrap:nowrap}html.phone .topright{width:auto}
+html.phone .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+html.phone .main,html.phone .col{display:contents}
+html.phone #thermal-card{order:4}html.phone #network-card{order:1}html.phone #process-card{order:2}html.phone #containers-card{order:3}
+html.phone .value{font-size:26px}html.phone .row.proc{grid-template-columns:minmax(0,1fr) 40px 6ch 9ch}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="brand"><div class="mark" aria-label="Samsung"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M23 12V27H5V9H19" stroke="currentColor" stroke-width="2"/><path d="M12 15L15 13V23M12 23H18M25 3V11M21 7H29" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></svg></div><div><div class="eyebrow">Phone system</div><h1>Galaxy S9 dashboard</h1></div></div>
+      <div class="topright"><span class="live"><i class="dot" id="dot"></i><span id="connection">Connecting</span></span><span class="last" id="updated">—</span><select class="action" id="refresh-interval" aria-label="Refresh interval"><option value="2">2 sec</option><option value="5">5 sec</option><option value="10">10 sec</option><option value="30" selected>30 sec</option><option value="60">60 sec</option></select><button class="action" id="refresh">Refresh</button><button class="action" id="term-btn" aria-expanded="false" aria-controls="term-card">Terminal</button></div>
+    </header>
+    <section class="kpis">
+      <article class="card tile" id="battery-tile"><div class="label">Battery</div><div class="batteryline"><div class="batterybox"><div class="batteryfill" id="battery-fill"></div></div><span class="value" id="battery">—</span></div><div class="sub" id="battery-sub">Waiting for device</div><div class="sub" id="uptime-line"></div></article>
+      <article class="card tile wide" id="cpu-card"><div class="label">CPU</div><div class="value-row"><span class="value" id="cpu">—</span><span class="unit">%</span></div><div class="bar"><span id="cpu-bar"></span></div><div class="cores" id="cores"></div><div class="sub" id="cpu-sub">Waiting for a second sample</div></article>
+      <article class="card tile" id="storage-card" role="button" tabindex="0" aria-expanded="false" aria-controls="parts-card" title="Show partitions" style="cursor:pointer"><div class="label">Storage · all ▾</div><div class="value-row"><span class="value" id="storage">—</span><span class="unit">GiB used</span></div><div class="bar"><span id="storage-bar"></span></div><div class="sub" id="storage-sub">—</div></article>
+      <article class="card tile" id="memory-card"><div class="label">Memory free</div><div class="value-row"><span class="value" id="memory">—</span><span class="unit" id="memory-unit">GiB</span></div><div class="bar stack"><span id="memory-bar"></span><span id="memory-cache" class="cache"></span></div><div class="sub" id="memory-sub">—</div></article>
+      <article class="card tile" id="gpu-clock-card"><div class="label" id="gpu-label">GPU</div><div class="value-row"><span class="value" id="gpu-clock">—</span><span class="unit"></span></div><div class="bar"><span id="gpu-bar"></span></div><div class="gcores" id="gpu-cores"></div><div class="sub" id="gpu-state">Waiting for device</div><div class="sub" id="gpu-usage"></div></article>
+    </section>
+    <article class="card" id="parts-card" hidden style="margin-bottom:12px"><div class="cardhead"><h3>Partitions</h3><span class="chip" id="parts-chip">—</span></div><div class="rows" id="parts"></div></article>
+    <article class="card" id="term-card" hidden style="margin-bottom:12px"><div class="cardhead"><h3>Terminal</h3><div class="termtools"><div class="termfont" role="group" aria-label="Terminal font size"><button class="action" id="term-font-down" type="button" aria-label="Decrease terminal font size">−</button><output class="termfont-value" id="term-font-value">15 px</output><button class="action" id="term-font-up" type="button" aria-label="Increase terminal font size">+</button><button class="action" id="term-font-reset" type="button">Reset size</button></div><button class="action" id="term-maximize" type="button" aria-label="Maximize terminal">Maximize</button><button class="action" id="term-reconnect" type="button" title="Reloads the terminal and starts a new shell session">Reconnect</button><a class="chip" id="term-pop" target="_blank" rel="noopener">Open in new tab</a></div></div><div class="termresize" id="term-resize"><iframe id="term" title="Phone terminal"></iframe></div></article>
+    <section class="main">
+      <article class="card proc-card" id="process-card"><div class="cardhead"><h3>Processes</h3><div class="chips"><select class="action" id="process-sort" aria-label="Sort processes"><option value="cpu">Top CPU</option><option value="ram">Top RAM</option></select><select class="action" id="process-limit" aria-label="Number of processes"><option value="5">5 rows</option><option value="10">10 rows</option><option value="20" selected>20 rows</option><option value="50">50 rows</option><option value="all">All rows</option></select><button class="action" id="process-collapse" type="button" aria-pressed="false" title="Show only the top 5">Collapse</button></div></div><div class="ptools"><input class="action" id="process-filter" type="search" placeholder="Filter by process name or PID…" aria-label="Filter processes by name or PID"></div><div class="sub" id="process-summary" style="margin-bottom:6px">Top 20 · CPU per core · resident RAM</div><div class="row proc rowheader" aria-hidden="true"><span>Process · PID · user</span><span></span><span style="text-align:right">CPU</span><span style="text-align:right">RAM</span><span></span></div><div class="rows" id="processes"><div class="empty">Loading process list…</div></div></article>
+      <div class="col">
+        <article class="card" id="containers-card"><div class="cardhead"><h3>Docker containers</h3><span class="chip" id="docker-chip">Checking</span></div><div class="containers" id="containers"><div class="empty">Loading containers…</div></div></article>
+        <article class="card" id="battery-card"><div class="cardhead"><h3>Battery &amp; charging</h3><span class="chip" id="battery-chip">—</span></div><div class="details"><div class="detail"><span class="k">Temperature</span><span class="v" id="battery-temp">—</span></div><div class="detail"><span class="k">Voltage</span><span class="v" id="battery-voltage">—</span></div><div class="detail"><span class="k" id="battery-current-k">Current</span><span class="v" id="battery-current">—</span></div><div class="detail"><span class="k">Power source</span><span class="v" id="battery-source">—</span></div><div class="detail"><span class="k">Input limit</span><span class="v" id="battery-input">—</span></div><div class="detail"><span class="k">Health</span><span class="v" id="battery-health">—</span></div></div></article>
+        <article class="card" id="thermal-card"><div class="cardhead"><h3>Temperatures</h3><span class="chip" id="thermal-chip">—</span></div><div class="temps" id="temps"><div class="empty">Loading sensors…</div></div></article>
+        <article class="card" id="network-card"><div class="cardhead"><h3>Network &amp; access</h3><span class="chip" id="wifi-chip">Checking</span></div><div class="netmain"><div class="signal" id="wifi-signal">—</div><div><div class="ssid" id="wifi-ssid">—</div><div class="muted" id="wifi-state" style="font-size:11px">—</div></div></div><div class="details"><div class="detail"><span class="k">Interface</span><span class="v" id="wifi-if">—</span></div><div class="detail"><span class="k">Address</span><span class="v" id="wifi-ip">—</span></div><div class="detail"><span class="k">Link rate</span><span class="v" id="wifi-rate">—</span></div></div><div class="chips" style="margin-top:8px"><span class="chip" id="ssh-status">SSH Unknown</span><span class="chip" id="usb-status">USB Unknown</span><span class="chip" id="ts-status">Tailscale Unknown</span></div><div class="sshrow" id="ts-row" hidden><button class="action" id="ts-login">Connect Tailscale</button><div class="sub" id="ts-msg">Opens the Tailscale sign-in page.</div></div><div class="sshrow"><button class="action" id="copy-ssh">Copy <code id="ssh-cmd">ssh</code></button><div class="sub" id="copy-status">The shell opens in your terminal.</div></div></article>
+        <article class="card" id="gpu-card"><div class="cardhead"><h3>GPU &amp; Bluetooth</h3><span class="chip" id="bt-chip">—</span></div><div class="details"><div class="detail"><span class="k">GPU governor</span><span class="v" id="gpu-gov">—</span></div><div class="detail"><span class="k">GPU load</span><span class="v" id="gpu-util">—</span></div><div class="detail"><span class="k">Bluetooth</span><span class="v" id="bt-addr">—</span></div></div></article>
+      </div>
+    </section>
+    <div class="footer" id="poll-hint">Refreshes every 30 seconds while this tab is open</div>
+  </main>
+<script>if (document.documentElement.classList.contains('phone')) {
+  const refresh = document.getElementById('refresh-interval');
+  refresh.add(new Option('1 second', '1'));
+  refresh.value = '1';
+  const limit = document.getElementById('process-limit');
+  limit.value = '5';
+  document.querySelectorAll('a, button, select, input').forEach(el => {
+    el.disabled = true;
+    el.tabIndex = -1;
+  });
+}
+</script>
+  <script>
+    const $=id=>document.getElementById(id), dashFmt={
+      bytes(n){if(n==null)return '—';const u=['B','KiB','MiB','GiB','TiB'];let i=0,v=n;while(v>=1024&&i<u.length-1){v/=1024;i++}return `${v.toFixed(i?1:0)} ${u[i]}`},
+      uptime(s){if(s==null)return '—';s=Math.floor(s);const d=Math.floor(s/86400);s%=86400;const h=Math.floor(s/3600);s%=3600;const m=Math.floor(s/60);return d?`${d}d ${h}h`:`${h}h ${m}m`},
+      num(n,d=0){return n==null?'—':Number(n).toFixed(d)}
+    };
+    function text(id,value){$(id).textContent=value==null?'—':value}
+    function bar(id,value){$(id).style.width=`${Math.max(0,Math.min(100,Number(value)||0))}%`}
+
+    function renderParts(parts){
+      const box=$('parts');box.replaceChildren();parts=parts||[];
+      const m=parts.filter(p=>p.mountpoint);text('parts-chip',`${m.length} mounted · ${parts.length} total`);
+      for(const p of parts){
+        const r=document.createElement('div');r.className='row part'+(p.mountpoint?'':' unmounted');
+        const name=document.createElement('span');name.className='rowname';
+        name.textContent=`${p.mountpoint||'not mounted'} · ${p.name}${p.label?' ('+p.label+')':''}${p.fstype?' · '+p.fstype:''}`;
+        const size=document.createElement('span');size.style.textAlign='right';size.textContent=dashFmt.bytes(p.size_bytes);
+        const b=document.createElement('div');b.className='smallbar';
+        if(p.used_percent!=null){const i=document.createElement('i');i.style.width=`${p.used_percent}%`;b.append(i)}else b.style.visibility='hidden';
+        const use=document.createElement('span');use.style.textAlign='right';
+        use.textContent=p.used_bytes==null?'':`${dashFmt.bytes(p.free_bytes)} free · ${dashFmt.num(p.used_percent,1)}%`;
+        r.append(name,size,b,use);box.append(r);
+      }
+    }
+    (()=>{
+      const button=$('term-btn'),card=$('term-card'),frame=$('term'),resizeBox=$('term-resize'),url=new URL(`${location.protocol}//${location.hostname}:7681/`),sizeKey='s9-terminal-font-size',minimum=9,maximum=30,defaultSize=15;
+      let size=defaultSize;
+      try{const saved=Number(localStorage.getItem(sizeKey));if(Number.isInteger(saved)&&saved>=minimum&&saved<=maximum)size=saved}catch(_){}
+      $('term-pop').href=url.href;
+      function displaySize(){$('term-font-value').textContent=`${size} px`}
+      function send(type,value={}){if(frame.hasAttribute('src')&&frame.contentWindow)frame.contentWindow.postMessage({type,...value},url.origin)}
+      function setSize(next){size=Math.max(minimum,Math.min(maximum,next));try{localStorage.setItem(sizeKey,String(size))}catch(_){}displaySize();send('s9-font-size',{size})}
+      displaySize();
+      $('term-font-down').onclick=()=>setSize(size-1);$('term-font-up').onclick=()=>setSize(size+1);$('term-font-reset').onclick=()=>setSize(defaultSize);
+      button.onclick=()=>{card.hidden=!card.hidden;button.setAttribute('aria-expanded',String(!card.hidden));if(!card.hidden&&!frame.hasAttribute('src'))frame.src=url.href};
+      frame.addEventListener('load',()=>send('s9-font-size',{size}));
+      $('term-reconnect').onclick=()=>{frame.src=url.href};
+      const maximize=$('term-maximize');
+      function updateFullscreen(){const active=document.fullscreenElement===card;maximize.textContent=active?'Restore':'Maximize';maximize.setAttribute('aria-pressed',String(active));send('s9-fit')}
+      maximize.onclick=async()=>{try{if(document.fullscreenElement===card)await document.exitFullscreen();else if(card.requestFullscreen)await card.requestFullscreen();else note('Fullscreen is unavailable in this browser')}catch(_){note('Fullscreen is unavailable in this browser')}};
+      document.addEventListener('fullscreenchange',updateFullscreen);
+      if(typeof ResizeObserver==='function')new ResizeObserver(()=>send('s9-fit')).observe(resizeBox);
+    })();
+    (()=>{const c=$('storage-card'),t=()=>{const open=$('parts-card').hidden;$('parts-card').hidden=!open;c.setAttribute('aria-expanded',String(open))};
+      c.addEventListener('click',t);c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();t()}})})();
+    const termed={};
+    async function post(path,body){try{const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return await r.json()}catch(e){return{ok:false,message:String(e)}}}
+    function note(m){text('poll-hint',m)}
+    async function dockerAct(c,act){if(!confirm(`${act[0].toUpperCase()+act.slice(1)} container ${c.name}?`))return;const r=await post('/api/docker/'+act,{name:c.name});note(r.message);refresh(true)}
+    function setContainers(data){const list=$('containers');list.replaceChildren();if(!data.available){$('docker-chip').textContent='Unavailable';const msg=document.createElement('div');msg.className='empty';msg.textContent='Docker status is unavailable';list.append(msg);return}
+      const items=data.containers||[];const running=items.filter(item=>(item.state||'').toLowerCase()==='running').length;$('docker-chip').textContent=`${running} running · ${items.length} total`;if(!items.length){const msg=document.createElement('div');msg.className='empty';msg.textContent='No containers';list.append(msg);return}
+      for(const item of items){const row=document.createElement('div');row.className='container';const dot=document.createElement('i');dot.className='state-dot';dot.style.background=(item.state||'').toLowerCase()==='running'?'var(--green)':'var(--amber)';const main=document.createElement('div');main.style.minWidth='0';const name=document.createElement('div');name.className='container-name';name.textContent=item.name||'Unnamed';const meta=document.createElement('div');meta.className='container-meta';meta.textContent=[item.image,item.ports].filter(Boolean).join(' · ');main.append(name,meta);const status=document.createElement('span');status.className='container-state';status.textContent=item.status||item.state||'—';row.append(dot,main,status);const st=(item.state||'').toLowerCase();const acts=st==='running'?['pause','stop']:st==='paused'?['unpause']:['start'];const bt=document.createElement('div');bt.className='cbtns';bt.style.gridColumn='2 / 4';for(const a of acts){const b=document.createElement('button');b.className='act-btn';b.textContent=a[0].toUpperCase()+a.slice(1);b.addEventListener('click',()=>dockerAct(item,a));bt.append(b)}row.append(bt);list.append(row)}
+    }
+    async function killProc(p,force){
+      if(!confirm(force?`Still running. Force kill (SIGKILL) ${p.name} (${p.pid})? Unsaved data is lost.`:`Terminate ${p.name} (${p.pid}) with SIGTERM?`))return;
+      const r=await post('/api/process/kill',{pid:p.pid,start:p.start,signal:force?'KILL':'TERM'});note(r.message);if(r.ok&&!force)termed[p.pid]={start:p.start,at:Date.now()};refresh(true)}
+    function setRows(container,items){container.replaceChildren();if(!items.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=$('process-filter').value.trim()?'No matching processes':'No process data available';container.append(empty);return}
+      for(const item of items){
+        const row=document.createElement('div');row.className='row';
+        const name=document.createElement('span');name.className='rowname';name.textContent=`${item.name} · ${item.pid} · ${item.user||'?'}`;name.title=`${item.user||'?'} · ${item.cmd||item.name}`;
+        const cpu=document.createElement('span');cpu.className='rowval process-cpu';cpu.textContent=item.cpu_percent==null?'—':`${dashFmt.num(item.cpu_percent,1)}%`;cpu.title='CPU · one core = 100%';
+        const ram=document.createElement('span');ram.className='rowval process-ram';ram.textContent=dashFmt.bytes(item.rss_bytes);ram.title=`Resident RAM · ${dashFmt.num(item.memory_percent,1)}% of system RAM`;
+        const track=document.createElement('span');track.className='smallbar';track.setAttribute('aria-hidden','true');const fill=document.createElement('i');fill.style.width=`${Math.max(0,Math.min(100,Number(item.cpu_percent)||0))}%`;track.append(fill);
+        row.className='row proc';const kb=document.createElement('button');kb.className='act-btn';const t0=termed[item.pid];const force=t0&&t0.start===item.start&&Date.now()-t0.at>=5000;kb.textContent=force?'SIGKILL':'Kill';if(force)kb.classList.add('danger');kb.disabled=!item.killable;kb.title=item.killable?'':'not your process (or protected)';kb.addEventListener('click',()=>killProc(item,force));row.append(name,track,cpu,ram,kb);container.append(row);
+      }
+    }
+    function renderTemps(list){const box=$('temps');box.replaceChildren();if(!list.length){const e=document.createElement('div');e.className='empty';e.textContent='No temperature sensors';box.append(e);text('thermal-chip','—');return}
+      const hot=list.reduce((a,t)=>t.temp_c>a.temp_c?t:a);text('thermal-chip',`Hottest: ${hot.name} ${dashFmt.num(hot.temp_c,1)} °C`);
+      for(const t of list){const lim=t.limit_c||90,c=document.createElement('div');c.className='temp'+(t.temp_c>=lim?' hot':t.temp_c>=lim-10?' warm':'');c.title=t.limit_c?`Throttles at ${t.limit_c} °C`:'No throttle trip; colour from 80/90 °C';
+        const k=document.createElement('div');k.className='k';k.textContent=t.name;const v=document.createElement('div');v.className='v';v.textContent=`${dashFmt.num(t.temp_c,1)} °C`;if(t.limit_c){const l=document.createElement('span');l.className='lim';l.textContent=`/ ${t.limit_c}`;v.append(l)}
+        const b=document.createElement('div');b.className='smallbar';const i=document.createElement('i');i.style.width=`${Math.max(0,Math.min(100,(t.temp_c-20)/(lim-20)*100))}%`;i.style.background=t.temp_c>=lim?'var(--red)':t.temp_c>=lim-10?'var(--amber)':'var(--blue)';b.append(i);c.append(k,v,b);box.append(c)}}
+    // Remember sort, row count and refresh interval per browser (not in phone view, which pins its own).
+    const prefs=['process-sort','process-limit','refresh-interval'];
+    if(!document.documentElement.classList.contains('phone'))for(const id of prefs){try{const v=localStorage.getItem('s9-'+id);if(v&&[...$(id).options].some(o=>o.value===v))$(id).value=v}catch(_){}$(id).addEventListener('change',()=>{try{localStorage.setItem('s9-'+id,$(id).value)}catch(_){}})}
+    let expandedLimit=$('process-limit').value==='5'?'20':$('process-limit').value;
+    function syncCollapse(){const c=$('process-limit').value==='5';$('process-collapse').textContent=c?'Expand':'Collapse';$('process-collapse').setAttribute('aria-pressed',String(c))}
+    $('process-collapse').addEventListener('click',()=>{const sel=$('process-limit');if(sel.value==='5')sel.value=expandedLimit;else{expandedLimit=sel.value;sel.value='5'}sel.dispatchEvent(new Event('change'))});
+    $('process-limit').addEventListener('change',()=>{syncCollapse();fit()});syncCollapse();
+    let latestProcesses=[];
+    function renderProcesses(){
+      const key=$('process-sort').value==='ram'?'rss_bytes':'cpu_percent';
+      const query=$('process-filter').value.trim().toLowerCase();
+      const matches=latestProcesses.filter(item=>!query||`${item.name||''} ${item.pid}`.toLowerCase().includes(query));
+      const limit=$('process-limit').value==='all'?matches.length:Number($('process-limit').value);
+      const rows=[...matches].sort((a,b)=>(b[key]||0)-(a[key]||0)||a.pid-b.pid).slice(0,limit);
+      setRows($('processes'),rows);
+      text('process-summary',`${rows.length} of ${matches.length}${query?' matching':''} processes · CPU per core · resident RAM`);
+    }
+    $('process-sort').addEventListener('change',renderProcesses);
+    $('process-limit').addEventListener('change',renderProcesses);
+    $('process-filter').addEventListener('input',()=>{renderProcesses();fit();});
+    // Shrink the whole page to fit the window height; zooming out also widens the layout, so settle in a few passes.
+    // ponytail: floor 0.8, below that the page scrolls instead of becoming unreadable.
+    function fit(){const w=document.querySelector('.wrap');if(document.documentElement.classList.contains('phone')){w.style.zoom='';return;}let z=1;w.style.zoom=1;for(let i=0;i<4;i++){const h=w.getBoundingClientRect().height;if(h<=innerHeight+1)break;z=Math.max(.8,z*innerHeight/h);w.style.zoom=z;}}
+    addEventListener('resize',fit);
+    function render(d){
+      const b=d.battery||{};text('battery',b.percent==null?null:`~${b.percent}%`);bar('battery-fill',b.percent);const batteryStatus=b.status,charging=(b.status||'').toLowerCase()==='charging';$('battery-fill').style.background=charging?'var(--cyan)':b.percent==null||b.percent>=50?'var(--green)':b.percent>=20?'var(--amber)':'var(--red)';text('battery-sub',batteryStatus?`${batteryStatus}${b.source?` · ${{usb:'USB',ac:'wall charger',wireless:'wireless'}[b.source]}`:''}${b.current_ma==null?'':` · ${b.current_ma>0?'+':''}${b.current_ma} mA`}`:'Battery data unavailable');text('battery-chip',b.present===false?'Not present':b.available?'Battery online':'Unavailable');text('battery-temp',b.temperature_c==null?'—':`${dashFmt.num(b.temperature_c,1)} °C`);text('battery-voltage',b.voltage_v==null?'—':`${dashFmt.num(b.voltage_v,3)} V`);text('battery-current',b.current_ma==null?'—':`${b.current_ma>0?'+':''}${dashFmt.num(b.current_ma,0)} mA`);text('battery-current-k',b.current_ma==null?'Current':b.current_ma>=0?'Current · in':'Current · out');text('battery-source',{usb:'USB',ac:'Wall charger',wireless:'Wireless'}[b.source]||(b.plugged===false?'Battery only':'—'));text('battery-input',b.input_limit_ma==null?'—':`${b.input_limit_ma} mA`);text('battery-health',b.health);renderTemps(d.thermals||[]);
+      const cpu=d.cpu||{};text('cpu',cpu.percent);bar('cpu-bar',cpu.percent);const on=(cpu.cores||[]).filter(v=>v!=null).length;$('cpu-sub').title='4 LITTLE A55 + 4 big M3 · load average is inflated by D-state kernel threads';text('cpu-sub',cpu.percent==null?'Waiting for a second sample':`LITTLE ${cpu.freq_mhz?.little??'—'} · big ${cpu.freq_mhz?.big??'—'} MHz${cpu.temp_c==null?'':` · ${cpu.temp_c} °C`}\n${on} of ${cpu.logical_cores||'—'} cores online${cpu.loadavg==null?'':` · load ${cpu.loadavg}`}`);$('cores').replaceChildren(...(cpu.cores||[]).map((v,i)=>{const c=document.createElement('div');c.className='core'+(v==null?' off':'')+(i==4&&cpu.cores.length==8?' gap':'');c.title=`cpu${i} ${cpu.cores.length==8?(i<4?'LITTLE':'big'):''} · ${v==null?'offline':Math.round(v)+'%'}`;const f=document.createElement('b');f.style.height=`${v||0}%`;c.append(f);return c}));
+      const gpu=d.gpu||{};text('gpu-label',gpu.model||'GPU');const clk=gpu.clock_mhz;text('gpu-clock',!gpu.available?'Unavailable':clk==null?'Idle':Math.round(clk));$('gpu-clock').nextElementSibling.textContent=clk==null?'':'MHz';bar('gpu-bar',clk&&gpu.max_clock_mhz?clk/gpu.max_clock_mhz*100:0);text('gpu-state',gpu.available?`${gpu.power_state||'unknown'}${gpu.temp_c==null?'':` · ${gpu.temp_c} °C`} · max ${Math.round(gpu.max_clock_mhz||0)} MHz`:'Telemetry unavailable');$('gpu-cores').replaceChildren(...Array.from({length:gpu.shader_cores||0},(_,i)=>{const c=document.createElement('div');c.className='core';c.title=`shader core ${i} · GPU load ${gpu.utilization_percent??'—'}% (driver reports total only)`;const f=document.createElement('b');f.style.height=`${gpu.utilization_percent||0}%`;c.append(f);return c}));text('gpu-usage',gpu.utilization_percent==null?'':`load ${gpu.utilization_percent}%`);const gp=gpu;text('gpu-gov',gp.governor);text('gpu-util',gp.utilization_percent==null?'—':`${gp.utilization_percent}%`);const bt=d.services?.bluetooth||{};text('bt-chip',bt.up===true?'Powered':bt.up===false?'Off':'Unknown');text('bt-addr',bt.address);
+      const m=d.memory||{};text('memory',m.free_bytes==null?'—':(m.free_bytes/1073741824).toFixed(2));text('memory-unit',m.cached_bytes==null?'GiB':`GiB (+${(m.cached_bytes/1073741824).toFixed(2)} cached)`);bar('memory-bar',m.used_percent);bar('memory-cache',m.cached_percent);text('memory-sub',m.used_bytes==null?'Memory data unavailable':`${dashFmt.bytes(m.used_bytes)} used · ${dashFmt.bytes(m.cached_bytes)} cached · ${dashFmt.bytes(m.free_bytes)} free`);
+      const s=d.storage||{};renderParts(s.partitions);text('storage',s.used_bytes==null?'—':(s.used_bytes/1073741824).toFixed(1));bar('storage-bar',s.used_percent);text('storage-sub',s.used_bytes==null?'Storage data unavailable':`${dashFmt.bytes(s.free_bytes)} free of ${dashFmt.bytes(s.total_bytes)} · ${dashFmt.num(s.used_percent,1)}%`);
+      text('uptime-line',d.uptime_seconds==null?'':`Up ${dashFmt.uptime(d.uptime_seconds)} since boot`);
+      const w=d.wifi||{};text('wifi-chip',w.connected===true?'Connected':w.connected===false?(w.available?'No connection':'Unavailable'):'Link details');text('wifi-ssid',w.ssid||(w.connected===false?'No active Wi-Fi':'Network details unavailable'));text('wifi-state',w.connected===true?'Connected to wireless network':w.connected===false?(w.available?'Interface is down':'Wi-Fi details unavailable'):'Link quality available · network details unavailable');text('wifi-signal',w.signal_percent==null?(w.signal_dbm==null?'—':`${dashFmt.num(w.signal_dbm)} dBm`):`${w.signal_percent}%`);text('wifi-if',w.interface);text('wifi-ip',w.ip_address);text('wifi-rate',w.rate_mbps||'—');
+      for(const [key,label] of [['ssh','SSH'],['usb','USB']]){const up=d.services?.[key]?.up;text(key+'-status',`${label} ${up===true?'Up':up===false?'Down':'Unknown'}`);}const ts=d.services?.tailscale||{};text('ts-status',`Tailscale ${ts.state==='Running'?(ts.ip||'Up'):ts.state||'Unknown'}`);tsState=ts.state;$('ts-row').hidden=!ts.state;if(!tsBusy){text('ts-login',ts.state==='Running'?'Turn Tailscale off':ts.state==='NeedsLogin'?'Connect Tailscale':'Turn Tailscale on');text('ts-msg',ts.state==='Running'?`Connected as ${ts.name||'s9'} · ${ts.online??0}/${ts.peers??0} peers online`:ts.state==='NeedsLogin'?'Opens the Tailscale sign-in page in a new tab.':'Reconnects with the saved login.')}const host=/^(localhost|127\.|\[?::1)/.test(location.hostname)?(d.wifi?.ip_address||'').split('/')[0]||'phone':location.hostname;sshCmd=`ssh ${d.login_user||'user'}@${host}`;text('ssh-cmd',sshCmd);latestProcesses=d.processes||[];renderProcesses();setContainers(d.containers||{});
+      const time=d.collected_at?new Date(d.collected_at).toLocaleTimeString():new Date().toLocaleTimeString();text('updated',`Updated ${time}`);$('connection').textContent='Live';$('dot').style.background='var(--green)';fit();$('dot').style.boxShadow='0 0 12px #7ce6a688';
+    }
+    let sshCmd='ssh',tsState=null,tsBusy=false;let inFlight=false;async function refresh(force=false){if(document.hidden&&!force)return;if(inFlight)return;inFlight=true;$('connection').textContent='Refreshing';try{const response=await fetch('/api/status',{cache:'no-store'});if(!response.ok)throw new Error(`HTTP ${response.status}`);render(await response.json())}catch(error){$('connection').textContent='Offline';$('dot').style.background='var(--red)';$('dot').style.boxShadow='0 0 12px #ff7d7988';if(!$('updated').textContent||$('updated').textContent==='—')text('updated',error.message)}finally{inFlight=false}}
+    $('refresh').addEventListener('click',()=>refresh(true));document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh(true);else $('connection').textContent='Paused'});$('copy-ssh').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(sshCmd);text('copy-status','Copied. Paste into your terminal.')}catch(_){text('copy-status','Copy the command from the button label into your terminal.')}});$('ts-login').addEventListener('click',async()=>{if(tsBusy)return;tsBusy=true;try{if(tsState==='Running'){text('ts-msg','Turning off…');const r=await post('/api/tailscale/down',{});text('ts-msg',r.ok?'Off. The phone left the tailnet until you turn it on.':r.message||'failed');return}const win=tsState==='NeedsLogin'?window.open('','_blank'):null;if(win){win.opener=null;win.document.title='Tailscale sign-in';win.document.body.textContent='Asking the S9 for a Tailscale sign-in link…'}text('ts-msg',win?'Asking Tailscale for a sign-in link…':'Turning on…');const r=await post('/api/tailscale/login',{});if(r.ok&&r.message.startsWith('https://')){const a=document.createElement('a');a.href=r.message;a.target='_blank';a.rel='noopener';a.textContent='Open the Tailscale sign-in page';$('ts-msg').replaceChildren(a);if(win)win.location.href=r.message}else{if(win)win.close();text('ts-msg',r.ok?'On.':r.message||'failed')}}finally{tsBusy=false;refresh(true)}});refresh(true);
+    let refreshTimer;function scheduleRefresh(){const seconds=Number($('refresh-interval').value);clearInterval(refreshTimer);refreshTimer=setInterval(()=>refresh(),seconds*1000);text('poll-hint',`Refreshes every ${seconds} seconds while this tab is open`);}
+    $('refresh-interval').addEventListener('change',()=>{scheduleRefresh();refresh(true);});scheduleRefresh();
+  </script>
+</body>
+</html>

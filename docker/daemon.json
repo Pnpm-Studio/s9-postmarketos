@@ -1,0 +1,6 @@
+{
+  "data-root": "/srv/docker",
+  "storage-driver": "overlay2",
+  "runtimes": { "crun": { "path": "/usr/bin/crun" } },
+  "default-runtime": "crun"
+}

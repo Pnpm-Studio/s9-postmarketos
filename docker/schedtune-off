@@ -1,0 +1,14 @@
+#!/sbin/openrc-run
+# Android's schedtune cgroup allows only a handful of groups, so crun/runc
+# get ENOMEM creating per-container dirs in it. Docker doesn't need it.
+description="Unmount schedtune cgroup for Docker"
+
+depend() {
+	need cgroups
+	before docker
+}
+
+start() {
+	mountpoint -q /sys/fs/cgroup/schedtune || return 0
+	umount /sys/fs/cgroup/schedtune
+}

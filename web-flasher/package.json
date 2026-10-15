@@ -1,0 +1,23 @@
+{
+  "name": "s9-web-flasher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lineageos-infra/libmjolnir": "0.7.4",
+    "@yume-chan/adb": "2.6.4",
+    "@yume-chan/adb-credential-web": "2.1.0",
+    "@yume-chan/adb-daemon-webusb": "2.3.2",
+    "@yume-chan/stream-extra": "2.6.1",
+    "hash-wasm": "4.12.0"
+  },
+  "devDependencies": {
+    "@types/w3c-web-usb": "1.0.14",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,20 @@
+maintainer="S9 <s9@example.org>"
+pkgname=s9-mali
+pkgver=1
+pkgrel=0
+pkgdesc="Mali-G72 r19p0 userspace blob (Vulkan 1.1 / OpenCL 2.0) in a minimal bionic root, run with mali-run"
+url="https://postmarketos.org"
+arch="aarch64"
+license="custom:proprietary"
+options="!check !fhs !strip !tracedeps"
+install="$pkgname.post-install"
+# s9-mali-root.tar.gz is assembled from the stock firmware blobs by pkg/s9-mali/stage.sh
+source="s9-mali-root.tar.gz"
+builddir="$srcdir"
+
+package() {
+	mkdir -p "$pkgdir"
+	cp -a "$srcdir"/root/. "$pkgdir"/
+}
+
+sha512sums=""

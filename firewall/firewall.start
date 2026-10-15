@@ -1,0 +1,5 @@
+#!/bin/sh
+# Load the inbound firewall (legacy iptables: the 4.9 kernel has no usable nft).
+iptables-legacy-restore < /etc/s9-firewall/rules.v4
+ip6tables-legacy-restore < /etc/s9-firewall/rules.v6
+/usr/local/bin/web-apply   # per-interface dashboard reachability (/etc/s9/web, set in the Web page)

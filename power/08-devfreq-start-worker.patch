@@ -1,0 +1,19 @@
+--- a/drivers/devfreq/governor_simpleinteractive.c
++++ b/drivers/devfreq/governor_simpleinteractive.c
+@@ -256,6 +256,8 @@
+ 		schedule();
+ 
+ 		set_current_state(TASK_RUNNING);
++		if (kthread_should_stop())
++			break;
+ 
+ 		mutex_lock(&df->lock);
+ 		update_devfreq(df);
+@@ -345,6 +347,7 @@
+ #else
+ 	kthread_bind(data->change_freq_task, BOUND_CPU_NUM);
+ #endif
++	wake_up_process(data->change_freq_task);
+ 
+ 	return 0;
+ 

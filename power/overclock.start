@@ -1,0 +1,16 @@
+#!/bin/sh
+# Opt-in overclock, off unless /etc/s9/overclock holds a 4-core big cap in kHz (1 = 2314000). Toggled and stepped on the
+# phone's CPU & GPU limits page, behind two warnings. On: quad_freq = that cap (1794000..2704000, r7 knob), BIG IPA budget
+# 3500 mW, throttle target from /etc/s9/overclock-trip (m°C, 83000..100000, default 88000).
+# Measured at 2.31 GHz / 88 °C: +13 % LLM gen, peak 86 °C. Needs a strong charger and extra cooling.
+# Off leaves the stock 1.79 GHz / 2000 / 83 °C from boot alone.
+v=$(cat /etc/s9/overclock 2>/dev/null)
+case $v in ''|0) exit 0 ;; 1) v=2314000 ;; esac
+[ "$v" -ge 1794000 ] 2>/dev/null && [ "$v" -le 2704000 ] || v=2314000
+t=$(cat /etc/s9/overclock-trip 2>/dev/null)
+[ "$t" -ge 83000 ] 2>/dev/null && [ "$t" -le 100000 ] || t=88000
+T=/sys/class/thermal/thermal_zone0
+[ "$(cat $T/type)" = BIG ] || { echo 'overclock: thermal_zone0 is not BIG, skipped' >&2; exit 1; }
+echo 3500 > $T/sustainable_power
+echo "$t" > $T/trip_point_2_temp
+echo "$v" > /sys/devices/system/cpu/cpuhotplug/governor/quad_freq

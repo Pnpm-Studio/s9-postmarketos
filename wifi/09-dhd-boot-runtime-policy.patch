@@ -1,0 +1,25 @@
+--- a/drivers/net/wireless/bcmdhd_100_15/dhd_pcie.c
++++ b/drivers/net/wireless/bcmdhd_100_15/dhd_pcie.c
+@@ -9057,7 +9057,7 @@
+ 	/* bcmsdh_intr_unmask(bus->sdh); */
+ #ifdef DHD_PCIE_RUNTIMEPM
+ 	bus->idlecount = 0;
+-	bus->idletime = (int32)MAX_IDLE_COUNT;
++	bus->idletime = 0;
+ 	init_waitqueue_head(&bus->rpm_queue);
+ 	mutex_init(&bus->pm_lock);
+ #else
+--- a/drivers/net/wireless/bcmdhd_100_15/dhd_linux.c
++++ b/drivers/net/wireless/bcmdhd_100_15/dhd_linux.c
+@@ -10854,9 +10854,9 @@
+ 
+ 			DHD_ERROR(("%s vht_features set. ret --> %d\n", __FUNCTION__, ret));
+ 		}
+-		if (ret != BCME_BADOPTION) {
++		if (ret < 0 && ret != BCME_BADOPTION) {
+ 			DHD_ERROR(("%s vht_features set failed %d\n", __FUNCTION__, ret));
+-		} else {
++		} else if (ret == BCME_BADOPTION) {
+ 			DHD_INFO(("%s vht_features ret(%d) - need to check BANDLOCK\n",
+ 				__FUNCTION__, ret));
+ 		}

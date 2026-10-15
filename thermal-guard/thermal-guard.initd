@@ -1,0 +1,13 @@
+#!/sbin/openrc-run
+# /etc/init.d/thermal-guard: power off on sustained overheating, chime on low battery
+description="Thermal guard"
+command=/usr/bin/python3
+command_args=/usr/local/lib/thermal-guard/thermal-guard.py
+supervisor=supervise-daemon
+respawn_delay=5
+output_log=/var/log/thermal-guard.out
+error_log=/var/log/thermal-guard.out
+
+depend() {
+	after localmount
+}

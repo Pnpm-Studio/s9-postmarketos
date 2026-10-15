@@ -1,0 +1,7 @@
+#!/bin/sh
+# Keep Wi-Fi and MAX77705 I2C interrupts on the little cluster during big-core hotplug.
+# I2C needs 07-i2c-preserve-irq-affinity.patch; the stock driver overwrites this mask.
+for d in /proc/irq/[0-9]*; do
+    grep -qE "^ *${d##*/}:.*(dhdpcie|14360000[.]hsi2c)" /proc/interrupts && echo 0-3 > "$d/smp_affinity_list"
+done 2>/dev/null
+true

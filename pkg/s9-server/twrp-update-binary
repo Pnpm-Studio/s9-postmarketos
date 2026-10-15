@@ -1,0 +1,36 @@
+#!/sbin/sh
+# TWRP flashable: writes the three postmarketOS images to BOOT, SYSTEM and VENDOR with gunzip | dd.
+# @SRV@ = 1 also formats USERDATA as ext4 label s9-srv (mounted on /srv); this wipes /sdcard in TWRP.
+ZIP=$3
+FORMAT_SRV=@SRV@
+N=/dev/block/platform/11120000.ufs/by-name
+say() { echo "ui_print $*" >&"$OUTFD"; echo "ui_print" >&"$OUTFD"; }
+OUTFD=$2
+die() { say "ERROR: $*"; exit 1; }
+
+dev() { # name fallback
+	[ -b "$N/$1" ] && { echo "$N/$1"; return; }
+	[ -n "$2" ] && [ -b "$2" ] && { echo "$2"; return; }
+	die "no block device for $1"
+}
+flash() { # image.gz size sha256 device
+	say "Writing $1 -> $4"
+	unzip -p "$ZIP" "$1" | gunzip -c | dd bs=4M of="$4" 2>/dev/null || die "dd $1 failed"
+	sync
+	got=$(head -c "$2" "$4" | sha256sum | cut -d' ' -f1)
+	[ "$got" = "$3" ] || die "verify $1 failed"
+	say "  verified"
+}
+
+BOOT=$(dev BOOT) SYSTEM=$(dev SYSTEM /dev/block/sda18) VENDOR=$(dev VENDOR /dev/block/sda19)
+say "postmarketOS S9 server"
+umount /system /vendor 2>/dev/null
+@FLASH@
+if [ "$FORMAT_SRV" = 1 ]; then
+	U=$(dev USERDATA)
+	umount /data /sdcard 2>/dev/null
+	say "Formatting USERDATA as ext4 s9-srv"
+	if command -v mke2fs >/dev/null; then mke2fs -F -t ext4 -L s9-srv "$U" >/dev/null 2>&1; else mkfs.ext4 -F -L s9-srv "$U" >/dev/null 2>&1; fi || die "mkfs failed"
+fi
+say "Done. Reboot to system. Login: see README."
+exit 0

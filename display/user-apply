@@ -1,0 +1,24 @@
+#!/bin/sh
+# user-apply OLD NEW: rename a login user (busybox has no usermod). Updates passwd, shadow, group (own group + member lists),
+# gshadow if present, the home dir and its passwd field, and sudoers/doas mentions. Backups: /etc/{passwd,shadow,group,gshadow}.s9bak.
+set -eu
+old=$1 new=$2
+echo "$new" | grep -Eq '^[a-z_][a-z0-9_-]{0,31}$' || { echo "bad name: $new" >&2; exit 2; }
+grep -q "^$old:" /etc/passwd || { echo "no such user: $old" >&2; exit 2; }
+grep -q "^$new:" /etc/passwd /etc/group && { echo "name taken: $new" >&2; exit 2; }
+home=$(awk -F: -v u="$old" '$1==u{print $6}' /etc/passwd)
+[ "$home" = "/home/$old" ] && [ -e "/home/$new" ] && { echo "/home/$new exists" >&2; exit 2; }
+F="passwd shadow group"; [ -f /etc/gshadow ] && F="$F gshadow"
+for f in $F; do cp -p /etc/$f /etc/$f.s9bak; cp -p /etc/$f /etc/$f.new; done
+# member lists are comma separated: group field 4; gshadow fields 3 (admins) and 4
+mem='function r(v,  c,a,i,s){c=split(v,a,",");for(i=1;i<=c;i++)s=s (i>1?",":"") (a[i]==o?n:a[i]);return s} $1==o{$1=n}'
+awk -F: -v OFS=: -v o="$old" -v n="$new" '$1==o{$1=n} $6==h{$6=nh} {print}' h="/home/$old" nh="/home/$new" /etc/passwd > /etc/passwd.new
+awk -F: -v OFS=: -v o="$old" -v n="$new" '$1==o{$1=n} {print}' /etc/shadow > /etc/shadow.new
+awk -F: -v OFS=: -v o="$old" -v n="$new" "$mem {\$4=r(\$4)} {print}" /etc/group > /etc/group.new
+[ -f /etc/gshadow ] && awk -F: -v OFS=: -v o="$old" -v n="$new" "$mem {\$3=r(\$3);\$4=r(\$4)} {print}" /etc/gshadow > /etc/gshadow.new
+for f in $F; do mv /etc/$f.new /etc/$f; done
+[ "$home" = "/home/$old" ] && [ -d "$home" ] && mv "$home" "/home/$new"
+for f in /etc/sudoers /etc/sudoers.d/* /etc/doas.conf /etc/doas.d/*; do
+    [ -f "$f" ] && grep -q "^[^#]*[[:space:]:]$old\([[:space:],]\|\$\)" "$f" && sed -i "/^#/!s/\([[:space:]:]\)$old\([[:space:],]\|\$\)/\1$new\2/" "$f"
+done
+echo "renamed $old -> $new"

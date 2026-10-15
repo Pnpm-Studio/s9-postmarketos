@@ -1,0 +1,5 @@
+# /etc/conf.d/docker (S9): nft iptables can't use addrtype on the 4.9 kernel
+# and the firewall lives in legacy tables, so dockerd gets legacy binaries.
+export PATH="/usr/local/libexec/iptables-legacy:$PATH"
+DOCKER_OPTS=""
+LOGPROXY_CHMOD=0644
