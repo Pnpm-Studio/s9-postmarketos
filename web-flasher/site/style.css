@@ -154,6 +154,7 @@ select {
 .risk-step { padding-bottom: 14px; }
 .risk-check { display: flex; align-items: flex-start; gap: .7rem; color: #e8d7bd; font-size: .7rem; line-height: 1.6; cursor: pointer; }
 .risk-check input { width: 17px; height: 17px; flex: 0 0 auto; margin: .05rem 0 0; accent-color: var(--teal); }
+.connect-row { margin-bottom: 20px; }
 .flash-actions { border-top: 1px solid var(--line); padding-top: 20px; }
 .status { min-height: 1.3rem; margin: .7rem 0 0; color: var(--muted); font-size: .65rem; }
 .progress-row { display: flex; align-items: center; gap: .8rem; margin-top: .5rem; color: var(--teal); font-size: .65rem; }

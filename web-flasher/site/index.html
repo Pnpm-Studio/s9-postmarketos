@@ -38,9 +38,13 @@
             <p class="field-help">Writes only the <code>RECOVERY</code> partition (Odin protocol). Needs an OEM-unlocked S9 (SM-G960F, Exynos). Not for the Snapdragon SM-G9600.</p>
             <ol class="guide-list s9-steps">
               <li><span>01</span><p>Power off. Hold <kbd>Volume Down</kbd> + <kbd>Bixby</kbd>, plug in USB, press <kbd>Volume Up</kbd> to enter Download Mode.</p></li>
-              <li><span>02</span><p>Download <code>twrp-3.7.0_9-0-starlte.img</code> (or pick your own copy) below, then connect. The page checks its SHA-256 before writing.</p></li>
+              <li><span>02</span><p>Connect first: it tells you right away if the phone is busy. Then download <code>twrp-3.7.0_9-0-starlte.img</code> (or pick your own copy). The page checks its SHA-256 before writing.</p></li>
               <li><span>03</span><p><strong>Right after the flash, do not let the phone boot normally</strong> (stock Android would restore the stock recovery). Hold <kbd>Volume Down</kbd> + <kbd>Power</kbd> until the screen goes black, then immediately hold <kbd>Volume Up</kbd> + <kbd>Bixby</kbd> + <kbd>Power</kbd> until the TWRP screen appears.</p></li>
             </ol>
+            <div class="connect-row">
+              <button class="button button-secondary" id="twrp-connect" type="button">Connect Download Mode</button>
+              <p id="twrp-status" class="status" role="status" aria-live="polite">Put the phone in Download Mode, then connect.</p>
+            </div>
             <button class="button button-secondary download-button" id="twrp-download" type="button">Download TWRP</button>
             <label class="file-picker" for="twrp-file">
               <span class="file-picker-icon" aria-hidden="true">＋</span>
@@ -51,9 +55,7 @@
             <label class="field-label confirmation-label" for="twrp-confirm">Type <code>FLASH TWRP</code> to confirm</label>
             <input class="confirmation-input" id="twrp-confirm" type="text" placeholder="FLASH TWRP" autocomplete="off" autocapitalize="characters" spellcheck="false">
             <div class="flash-actions">
-              <button class="button button-secondary" id="twrp-connect" type="button">Connect Download Mode</button>
               <button class="button button-primary" id="twrp-flash" type="button" disabled>Flash TWRP <span aria-hidden="true">↗</span></button>
-              <p id="twrp-status" class="status" role="status" aria-live="polite">Put the phone in Download Mode, then connect.</p>
             </div>
             <div class="progress-row"><progress id="twrp-progress" max="100" value="0" aria-label="TWRP progress">0%</progress><span id="twrp-progress-value">0%</span></div>
           </section>
@@ -66,8 +68,12 @@
             <p class="field-help">Writes <code>samsung-starlte-root.img</code> to SYSTEM, <code>samsung-starlte-boot.img</code> to VENDOR and <code>boot.img</code> to BOOT, then verifies each on the phone with SHA-256. Files stay in your browser and stream over USB.</p>
             <ol class="guide-list s9-steps">
               <li><span>01</span><p>Boot TWRP (<kbd>Volume Up</kbd> + <kbd>Bixby</kbd> + <kbd>Power</kbd>). Do not mount system, vendor or data.</p></li>
-              <li><span>02</span><p>Download the images (or pick the three files you already have), connect, and approve the ADB prompt on the phone if it appears.</p></li>
+              <li><span>02</span><p>Connect first (approve the ADB prompt on the phone if it appears), then download the images or pick the three files you already have.</p></li>
             </ol>
+            <div class="connect-row">
+              <button class="button button-secondary" id="rom-connect" type="button">Connect TWRP</button>
+              <p id="rom-status" class="status" role="status" aria-live="polite">Boot TWRP, then connect.</p>
+            </div>
             <button class="button button-secondary download-button" id="rom-download" type="button">Download the three images (~1.8 GB)</button>
             <label class="file-picker" for="rom-files">
               <span class="file-picker-icon" aria-hidden="true">＋</span>
@@ -82,9 +88,7 @@
             <label class="field-label confirmation-label" for="rom-confirm">Type <code>ERASE S9</code> to confirm</label>
             <input class="confirmation-input" id="rom-confirm" type="text" placeholder="ERASE S9" autocomplete="off" autocapitalize="characters" spellcheck="false">
             <div class="flash-actions">
-              <button class="button button-secondary" id="rom-connect" type="button">Connect TWRP</button>
               <button class="button button-primary" id="rom-flash" type="button" disabled>Flash image <span aria-hidden="true">↗</span></button>
-              <p id="rom-status" class="status" role="status" aria-live="polite">Boot TWRP, then connect.</p>
             </div>
             <div class="progress-row"><progress id="rom-progress" max="100" value="0" aria-label="Image progress">0%</progress><span id="rom-progress-value">0%</span></div>
             <section class="activity"><div class="activity-heading"><h3>Activity</h3><span class="activity-label">LOCAL SESSION</span></div><ol id="s9-log" aria-label="S9 activity log"></ol></section>
@@ -94,7 +98,7 @@
 
       <footer class="footer">
         <span>FIELD TOOLS <span class="wordmark-divider">/</span> S9</span>
-        <span>LOCAL FILES · USB · <a href="./THIRD-PARTY-NOTICES.txt">LICENSE NOTICES</a></span>
+        <span><a href="https://github.com/philipplinux/s9-postmarketos/releases/tag/v2026.10.15-s9">GITHUB RELEASE</a> · <a href="https://github.com/philipplinux/s9-postmarketos">SOURCE ON GITHUB</a> · <a href="./THIRD-PARTY-NOTICES.txt">LICENSE NOTICES</a></span>
       </footer>
     </div>
   </body>
