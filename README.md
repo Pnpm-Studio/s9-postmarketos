@@ -79,7 +79,7 @@ Needs [pmbootstrap](https://docs.postmarketos.org/pmbootstrap/) and a pmaports c
 6. Pin the release in the web flasher: `node web-flasher/scripts/fill-s9-manifest.mjs <W>/out <release>`.
 
 Shell: `shell/skel` (bash, starship, ble.sh, fzf) goes to `/etc/skel`, ble.sh to `/usr/share/blesh`; on boot
-`/etc/local.d/shell-env.start` gives every login user without a `~/.bashrc` that setup and bash as login shell.
+The `s9-shell-env` boot service gives every login user that setup and bash as login shell (own `~/.bashrc` files are left alone).
 Overclock is off until turned on (behind two warnings) on the phone's CPU & GPU limits page.
 
 Not in the image: the LLM model, Wi-Fi credentials, SSH keys, and the stock Samsung audio firmware (`calliope_*`,

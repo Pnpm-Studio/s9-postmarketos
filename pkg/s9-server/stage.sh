@@ -45,8 +45,8 @@ i 644 thermal-guard/thermal-guard.py /usr/local/lib/thermal-guard/thermal-guard.
 i 755 thermal-guard/thermal-guard.initd /etc/init.d/thermal-guard
 i 755 ttyd/prepare-index.py /usr/local/libexec/s9-ttyd-prepare-index
 i 644 firewall/rules.v6 /etc/s9-firewall/rules.v6
-# shell: bash + starship + ble.sh + fzf for every login user (copied once by shell-env.start)
-i 755 shell/shell-env.start /etc/local.d/shell-env.start
+# shell: bash + starship + ble.sh + fzf for every login user (s9-shell-env, boot runlevel)
+i 755 shell/s9-shell-env.initd /etc/init.d/s9-shell-env
 (cd "$R/shell/skel" && find . -type f) | while read -r f; do i 644 "shell/skel/$f" "/etc/skel/$f"; done
 mkdir -p "$D/usr/share" && tar -C "$D/usr/share" -xJf "$R/shell/blesh.tar.xz"
 # generic (shareable) rules; firewall/rules.v4 is the owner's 10.0.0.0/24 variant

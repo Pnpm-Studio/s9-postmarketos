@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+description="Bash + starship shell setup for login users"
+
+depend() { before s9-display s9-ttyd dropbear; }
+
+# Give login users (uid >= 1000) the S9 shell setup once: bash + starship + ble.sh + fzf from /etc/skel.
+# Runs in the boot runlevel, before the screen Terminal, ttyd and SSH can log anyone in.
+# Own dotfiles are never overwritten; only users still on the skel .bashrc are switched to bash.
+start() {
+awk -F: '$3 >= 1000 && $3 < 60000 { print $1 ":" $6 ":" $7 }' /etc/passwd | while IFS=: read -r u h sh; do
+	[ -d "$h" ] || continue
+	[ -e "$h/.bashrc" ] || { cp -a /etc/skel/. "$h/" && chown -R "$u:" "$h"; }
+	# pmbootstrap already copies /etc/skel when it creates the user, so switch anyone still on our skel .bashrc
+	cmp -s "$h/.bashrc" /etc/skel/.bashrc || continue
+	[ "$sh" = /bin/ash ] || [ "$sh" = /bin/sh ] && sed -i "s#^\($u:.*\):$sh\$#\1:/bin/bash#" /etc/passwd
+done
+return 0
+}

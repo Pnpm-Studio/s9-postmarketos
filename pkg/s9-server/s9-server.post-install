@@ -18,7 +18,7 @@ grep -q '^rc_cgroup_mode=' /etc/rc.conf \
 ln -sf postmarketos/bcm4361B2_semco.hcd /lib/firmware/BCM4347B2.hcd
 
 rc-update add s9-bootlogo sysinit >/dev/null
-for s in networking s9-srv; do rc-update add $s boot >/dev/null; done
+for s in networking s9-srv s9-shell-env; do rc-update add $s boot >/dev/null; done
 for s in bluetooth hciattach docker tailscale ntpd local s9-dashboard s9-display s9-ttyd schedtune-off thermal-guard; do
 	rc-update add $s default >/dev/null
 done
