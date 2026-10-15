@@ -2653,6 +2653,8 @@ class Ui:
         if self.page == TERM_PAGE:
             if not self.term_keyboard:
                 return False
+            if self.term_rotated and (y < TERM_TOP or x > rotated_kb_height()):
+                return False    # nearest-key fallback would grab the Rotate/Keyboard buttons above the strip
             x, y = keyboard_touch(x, y, self.term_rotated)
         key = kb_key_at(self.kb_mode, x, y)
         if key is None:
@@ -3362,6 +3364,12 @@ def selftest():
         assert ui.term_rotated and (t.cols, t.rows) == term_size(True, True)
         rotated_ui = ui.render(data, False, 0)
         assert rotated_ui.getpixel((round((5 * TAB_W + TAB_W // 2) * P), round((TAB_Y + 10) * P))) == (101, 224, 218)
+        rb = ((TERM_ROTATE_BTN[0] + TERM_ROTATE_BTN[2]) // 2, (TERM_ROTATE_BTN[1] + TERM_ROTATE_BTN[3]) // 2)
+        n = len(sent)      # rotated: touch-down on the buttons above the key strip must not type Esc/1/Shift
+        assert not ui.on_gesture(('down', 60, 50), data, 0) and not ui.on_gesture(('down', *rb), data, 0) and len(sent) == n
+        ui.on_gesture(('up',), data, 0)
+        assert ui.on_gesture(('tap', *rb), data, 0) and not ui.term_rotated
+        assert ui.on_gesture(('tap', *rb), data, 0) and ui.term_rotated
         assert ui.on_gesture(('tap', (TERM_KB_BTN[0] + TERM_KB_BTN[2]) // 2,
                               (TERM_KB_BTN[1] + TERM_KB_BTN[3]) // 2), data, 0)
         assert not ui.term_keyboard and (t.cols, t.rows) == term_size(True, False)
