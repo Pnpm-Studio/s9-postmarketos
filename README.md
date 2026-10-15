@@ -20,7 +20,7 @@ LLM: the image ships llama.cpp (`s9-llama-vk`, run with `mali-run`; bring your o
 
 ## Status
 
-Tested on one SM-G960F running the dev install; the release image itself is not yet flashed and booted.
+Tested on one SM-G960F: a fresh install of the release image via the web flasher, plus the earlier dev install.
 
 | Feature | Status | Note |
 |---|---|---|
