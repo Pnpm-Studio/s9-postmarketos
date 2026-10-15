@@ -7,7 +7,8 @@
 #  - a config string other than "Conf 1" hits a gsi/"Recovery ADB" branch that
 #    keeps only the first link, so the string must be "Conf 1".
 # If the tx path jams, u_ether returns NETDEV_TX_BUSY forever and NET_TX
-# softirq pins CPU0; the guard loop takes the link down when that happens.
+# softirq pins CPU0 (seen after a cable replug); the guard re-binds the gadget,
+# which clears it, and takes the link down if it jams again within a minute.
 # Mode from /etc/s9/usb (MODE=network|rndis|charge, default network): network = NCM+serial, rndis = RNDIS+serial
 # (Windows), charge = gadget off. "apply" (boot + phone UI) switches live when safe, exit 3 = needs a reboot
 # (the built function can't change, and ncm must never be re-linked once bound).
@@ -19,14 +20,23 @@ UDC=$(ls /sys/class/udc | head -1)
 # Function this script bound this boot (the stock gadget from the initramfs already links rndis, so links tell nothing).
 built() { cat /run/usb-net.built 2>/dev/null || echo none; }
 
+# /proc/stat softirq line: total hi timer net_tx ...
+net_tx() { awk '/^softirq/{print $5}' /proc/stat; }
+
 guard() {
-	p=$(awk '/softirq/{print $4}' /proc/stat)
+	p=$(net_tx)
 	while sleep 2; do
-		n=$(awk '/softirq/{print $4}' /proc/stat)
+		n=$(net_tx)
 		if [ $((n - p)) -gt 100000 ]; then
-			logger -t usb-net "NET_TX storm ($((n - p))/2s), taking USB down"
-			"$0" down
-			exit 1
+			now=$(cut -d. -f1 /proc/uptime)
+			last=$(cat /run/usb-net.recovered 2>/dev/null || echo -999)
+			if [ $((now - last)) -lt 60 ]; then
+				logger -t usb-net "NET_TX storm again ($((n - p))/2s), taking USB down"
+				exec "$0" down
+			fi
+			echo "$now" > /run/usb-net.recovered
+			logger -t usb-net "NET_TX storm ($((n - p))/2s), re-binding gadget"
+			exec "$0" up
 		fi
 		p=$n
 	done
