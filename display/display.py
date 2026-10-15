@@ -126,8 +126,11 @@ TERM_FILTERS = (
                                               r'^Register interface \[wlan', r'^Invalid frame (length )?\[?',
                                               r'^CFG\w*-(INFO|TRACE)\d?\) ', r'^DHD: ', r'^dhdpcie_', r'^wifi_platform_set_power', r'^Compiled in drivers/net/wireless/bcmdhd',
                                               r'^\[wlan\d\] ', r'^wl version\. ', r'^if name: p2p', r'^Register(ing Vendor| BRCM)|^Vendor: Register BRCM', r'^Created /proc/dhd_',
-                                              r'^\[?STATIC_IF\]? |^Static I/F ', r'^Incoming iface = ', r'^\[WIFI_SEC\] ', r'^No filter file\(not an error\)', r'^wl_android_wifi_on'), 'hide',
-     'Broadcom driver setup, firmware event traces and DHCP/EAPOL packet traces.'),
+                                              r'^\[?STATIC_IF\]? |^Static I/F ', r'^Incoming iface = ', r'^\[WIFI_SEC\] ', r'^No filter file\(not an error\)', r'^wl_android_wifi_on',
+                                              r'^(START SCAN|E?SCAN COMPLETED|LEGACY_SCAN |scan_prep done|Enqueing escan|n_channels:|scan engine not aborted)',
+                                              r'^(event_type \(|event=\d+ status|channel_hint|bssid_hint|key index \(|NOT assoc|(drv|fw) state is not)',
+                                              r'^(P2P interface registered|Vif created\.|p2p_dev bsscfg| Connected event)', r'^\[BT\] set_wake_locked'), 'hide',
+     'Broadcom Wi-Fi/Bluetooth setup, scan and connect traces, firmware events and DHCP/EAPOL packet traces.'),
     ('AUDIO', 'Audio driver notices', (r'^samsung-(abox|vts)', r'^\[(ABOX_ADAPTATION|MAXIM_DSM_POWER|MAX98512_DEBUG)\]', r'^(star-)?madera',
                                        r'^max98512', r'^Calliope'), 'hide',
      'Speaker amp, codec and audio DSP chatter on every sound.'),
@@ -3584,6 +3587,9 @@ def selftest():
     assert term_message_hidden('using random self ethernet address')
     assert term_message_hidden('using random host ethernet address')
     assert not term_message_hidden('ufshcd_ioctl: NULL buffer')
+    for line in ('LEGACY_SCAN sync ID: 0, bssidx: 0', 'key index (0) (0xfac04)', 'START SCAN', 'ESCAN COMPLETED',
+                 ' Connected event of connected device e=0 s=0, ignore it', '[BT] set_wake_locked value = 1'):
+        assert term_message_hidden(line), line
     for msg in ('usb: enable_store: already disabled', 'usb: gether_disconnect No of ZLPS (0)', 'usb_notify: send_otg_notify otg_notify is null',
                 'ccic_notifier_init already registered', 'dhd_prot_ioctl: SET PM to 2', 'DHCP ACK[REPLY][wlan0] [RX]'):
         assert term_message_hidden(msg), msg
