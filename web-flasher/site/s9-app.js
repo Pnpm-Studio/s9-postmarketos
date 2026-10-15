@@ -8,7 +8,11 @@ function el(id) {
   if (!node) throw Error(`Missing interface element: ${id}`);
   return /** @type {T} */ (node);
 }
-const message = error => error instanceof Error ? error.message : String(error);
+const message = error => {
+  const text = error instanceof Error ? error.message : String(error);
+  // Another program (usually the PC's own adb server) holds the USB interface.
+  return /in use|claim/i.test(text) ? `${text} Close other USB tools; if adb is installed, run \`adb kill-server\` on this PC.` : text;
+};
 
 /**
  * One flasher section: connect button, file picker, consent, flash button.
