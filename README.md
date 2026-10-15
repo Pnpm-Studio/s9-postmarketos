@@ -47,6 +47,12 @@ Tested on one SM-G960F: a fresh install of the release image via the web flasher
 | Modem/SIM, GPS, fingerprint, NFC | not tested | out of scope for a server |
 | ADB, MTP | not implemented | |
 
+## Galaxy S9+ (SM-G965F, `star2lte`)
+
+Same image built for the S9+: pick **Galaxy S9+** at the top of the web flasher, or use the `-s9plus` release.
+**Untested on hardware**, and no speaker audio (the S9 DSP tuning is not shipped for the S9+). Recipes and
+build steps: [s9plus/README.md](s9plus/README.md).
+
 ## Web flasher
 
 [`web-flasher/`](web-flasher/README.md): WebUSB installer for this phone only (SM-G960F / Exynos). Section 1

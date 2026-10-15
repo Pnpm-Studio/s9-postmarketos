@@ -136,7 +136,7 @@ const isMounted = (mounts, device) => mounts.split('\n').some(line => line.split
 /** @param {Shell} shell */
 export async function inspectS9(shell, { needFormatTool = false } = {}) {
   const product = await ok(shell, 'getprop ro.product.device');
-  if (product !== s9.device) throw Error(`Expected ${s9.device}; phone reports ${product || 'unknown'}.`);
+  if (product !== s9.device) throw Error(`Expected ${s9.device}; phone reports ${product || 'unknown'}. Pick the matching phone model at the top of the page.`);
   if (!await ok(shell, 'getprop ro.twrp.version')) throw Error('Phone does not report TWRP (ro.twrp.version). Boot into TWRP first.');
   const mounts = await ok(shell, 'cat /proc/mounts');
   const sizes = {};

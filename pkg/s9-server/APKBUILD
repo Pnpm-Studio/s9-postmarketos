@@ -1,7 +1,7 @@
 maintainer="S9 <s9@example.org>"
 pkgname=s9-server
 pkgver=1
-pkgrel=0
+pkgrel=1
 pkgdesc="Headless-server setup for the Samsung Galaxy S9 (dashboard, touch UI, web terminal, Docker, firewall)"
 url="https://postmarketos.org"
 arch="aarch64"
@@ -14,8 +14,6 @@ depends="
 	buffyboard
 	bluez-deprecated
 	crun
-	device-samsung-starlte-nonfree-firmware
-	device-samsung-starlte-nonfree-firmware-openrc
 	s9-mali
 	docker
 	docker-cli-compose

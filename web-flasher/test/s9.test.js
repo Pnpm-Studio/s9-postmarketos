@@ -195,3 +195,21 @@ test('fetchPinned returns a named File of the pinned size and rejects missing or
   await assert.rejects(fetchPinned({ name: 'boot.img', size: 5 }, () => {}, serve('hell')), /pinned 5/);
   await assert.rejects(fetchPinned({ name: 'boot.img', size: 5 }, () => {}, serve('hello!')), /larger/);
 });
+
+test('useModel switches every pin to the S9+ and back', async () => {
+  const { models, useModel } = await import('../site/s9-manifest.js');
+  const saved = { ...s9 };
+  try {
+    useModel('star2lte');
+    assert.equal(s9.device, 'star2lte');
+    assert.equal(s9.twrp.name, 'twrp-3.7.0_9-0-star2lte.img');
+    assert.deepEqual(s9.images.map(i => i.name), ['samsung-star2lte-root.img', 'samsung-star2lte-boot.img', 'boot.img']);
+    useModel('nonsense');
+    assert.equal(s9.device, 'star2lte');
+    // an S9 in TWRP must be refused while the S9+ is picked
+    const shell = { run: async () => ({ code: 0, out: 'starlte' }) };
+    await assert.rejects(inspectS9(shell), /Expected star2lte; phone reports starlte/);
+    useModel('starlte');
+    assert.equal(s9.twrp.name, models.starlte.twrp.name);
+  } finally { Object.assign(s9, saved); }
+});

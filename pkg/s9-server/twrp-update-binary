@@ -22,6 +22,9 @@ flash() { # image.gz size sha256 device
 	say "  verified"
 }
 
+# Model guard: starlte (S9) and star2lte (S9+) builds refuse to write on the other phone.
+got=$(getprop ro.product.device)
+[ "$got" = "@DEVICE@" ] || die "this zip is for @DEVICE@, phone reports ${got:-unknown}"
 BOOT=$(dev BOOT) SYSTEM=$(dev SYSTEM /dev/block/sda18) VENDOR=$(dev VENDOR /dev/block/sda19)
 say "postmarketOS S9 server"
 umount /system /vendor 2>/dev/null

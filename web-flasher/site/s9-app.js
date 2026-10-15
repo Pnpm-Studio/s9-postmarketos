@@ -1,6 +1,6 @@
 import { fetchPinned, installRom, installTwrp, selectRomImages, selectTwrp, ROM_CONFIRMATION, TWRP_CONFIRMATION } from './s9.js';
 import { adbShell, connectAdb, connectOdin } from './s9-usb.js';
-import { s9 } from './s9-manifest.js';
+import { models, s9 } from './s9-manifest.js';
 
 /** @template {HTMLElement} T @param {string} id @returns {T} */
 function el(id) {
@@ -104,6 +104,15 @@ function download(id, pins, report, pick) {
 
 /** Wires both S9 sections; returns the panel so the caller can show/hide it. */
 export function initS9(supported) {
+  // Model picker: reloads with ?model=, so no half-filled state carries over.
+  const picker = /** @type {HTMLSelectElement} */ (el('model'));
+  picker.replaceChildren(...Object.entries(models).map(([key, model]) => new Option(model.label, key, false, key === s9.device)));
+  picker.addEventListener('change', () => { location.search = `?model=${picker.value}`; });
+  const names = { twrp: s9.twrp.name, model: s9.model, device: `samsung-${s9.device}`,
+    root: s9.images[0].name, part: s9.images[1].name, title: s9.device === 'star2lte' ? 'Galaxy S9+.' : 'Galaxy S9.' };
+  const labelled = /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-name]'));
+  for (const node of labelled) node.textContent = names[node.dataset.name] ?? node.textContent;
+
   // Section 1: TWRP
   const twrpFile = /** @type {HTMLInputElement} */ (el('twrp-file'));
   const twrpConfirm = /** @type {HTMLInputElement} */ (el('twrp-confirm'));

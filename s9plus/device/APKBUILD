@@ -1,0 +1,64 @@
+# Archived: unmaintained
+# Reference: <https://postmarketos.org/devicepkg>
+maintainer=""
+pkgname=device-samsung-star2lte
+pkgdesc="Samsung Galaxy S9+"
+pkgver=3
+pkgrel=4
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	linux-samsung-star2lte
+	mkbootimg
+	postmarketos-base
+	postmarketos-base-downstream
+	msm-fb-refresher
+"
+makedepends="devicepkg-dev"
+source="
+	deviceinfo
+	initfs-hook.sh
+	hciattach
+"
+subpackages="
+	$pkgname-nonfree-firmware:nonfree_firmware
+	$pkgname-nonfree-firmware-openrc:nonfree_firmware_openrc
+	$pkgname-x11
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+
+	install -Dm755 "$srcdir"/hciattach \
+		-t "$pkgdir"/etc/init.d
+}
+
+nonfree_firmware() {
+	pkgdesc="$pkgdesc (WiFi and BT firmware)"
+	depends="firmware-samsung-crownlte bluez-deprecated"
+
+	mkdir "$subpkgdir"
+}
+
+nonfree_firmware_openrc() {
+	default_openrc
+	install_if="$pkgdir-nonfree-firmware openrc"
+}
+
+x11() {
+	install_if="$pkgname=$pkgver-r$pkgrel xorg-server"
+	depends="xf86-input-evdev"
+	mkdir "$subpkgdir"
+}
+
+sha512sums="
+28a54cbb32781b9f5282760fee0885e110a4924f3aad4b764453b5ae0fcae9974089999acbe9b2b3cf24e89dae6faef45868f9c9570eb4d48f8a44b30d196361  deviceinfo
+cec13a1cb076a249eb94d11fb122b1f6b0c3e9558a2ed3c8da3e73a8e2db633131ec8ce838e62da8f53b5500dcb77c6f4adf3c1d2f1cda6fd23cb2ca1ccf6abc  initfs-hook.sh
+524b25c7fb5d2da9a7090d0d8bf776c00d9f3d6899d2096cd6b7d5f0618a60ff22262ce710c88f71cbacf68749e2c6c6b5e12c87e63730106e689c644b3d5a81  hciattach
+"
