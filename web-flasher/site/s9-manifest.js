@@ -17,10 +17,10 @@ export const s9 = {
   mirror: 'https://huggingface.co/PhilippLinux/s9-postmarketos/resolve/main/',
   byName: '/dev/block/platform/11120000.ufs/by-name',
   images: [
-    { name: 'samsung-starlte-root.img', partition: 'SYSTEM', size: 1318060032, sha256: 'd239bac05b0a1e1244f86172704136b5b91de310b863d7b132e8ef38a73d8424' },
+    { name: 'samsung-starlte-root.img', partition: 'SYSTEM', size: 1321205760, sha256: 'a35a9c20f1bd4dd8d112094f23982721989edac51d283adaa226ad48ccfd3f5b' },
     // full-size pmOS boot partition image (512 MiB; the shrunk one was only a heimdall workaround)
-    { name: 'samsung-starlte-boot.img', partition: 'VENDOR', size: 536870912, sha256: 'ced3e6e64f0d76eabbe89ad66f9650b807f68c9f209962d5f4506c994609ce19' },
-    { name: 'boot.img', partition: 'BOOT', size: 38621184, sha256: '1f7c6ade22d71c19bf3fcc94bca56724ef478720b7e23a9bc31b938f1a6e96d7' }
+    { name: 'samsung-starlte-boot.img', partition: 'VENDOR', size: 536870912, sha256: '39a67316e9da031a75e3a3484b066fbc4c4801e1ab1a4c0b2aab7feb45f2ca0e' },
+    { name: 'boot.img', partition: 'BOOT', size: 38752256, sha256: '088bb1f099be371c245154aa4651c46866b3f44ed24318371c1b7239d885d637' }
   ],
   userdata: { partition: 'USERDATA', label: 's9-srv' }
 };
