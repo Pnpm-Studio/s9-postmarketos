@@ -87,6 +87,7 @@ h1 span { color: var(--teal); }
 .intro-copy { max-width: 590px; margin-bottom: 1rem; color: #a9b9b8; font-size: .95rem; }
 .experimental-note { display: inline-block; margin: 0; border-left: 2px solid var(--amber); padding: .32rem .7rem; color: #bdc7c4; font-size: .72rem; }
 .experimental-note strong { color: var(--amber); }
+.experimental-note a { color: var(--amber); }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(270px, .85fr); align-items: start; gap: 22px; }
 .flash-card, .guide-card, .coming-card { border: 1px solid var(--line); background: rgb(16 27 31 / 92%); }
