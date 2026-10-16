@@ -70,8 +70,9 @@
             </div>
             <p class="field-help">Writes <code data-name="root">samsung-starlte-root.img</code> to SYSTEM, <code data-name="part">samsung-starlte-boot.img</code> to VENDOR and <code>boot.img</code> to BOOT, then verifies each on the phone with SHA-256. Files stay in your browser and stream over USB.</p>
             <ol class="guide-list s9-steps">
-              <li><span>01</span><p>Boot TWRP (<kbd>Volume Up</kbd> + <kbd>Bixby</kbd> + <kbd>Power</kbd>). Do not mount system, vendor or data.</p></li>
-              <li><span>02</span><p>Connect first (approve the ADB prompt on the phone if it appears), then download the images or pick the three files you already have.</p></li>
+              <li><span>01</span><p>Start TWRP: with the phone off, hold <kbd>Volume Up</kbd> + <kbd>Bixby</kbd> + <kbd>Power</kbd> until TWRP opens. Stay on its main menu; don't use Mount or Wipe.</p></li>
+              <li><span>02</span><p>Plug in USB and click <strong>Connect TWRP</strong>. If the phone asks to allow USB debugging, tap Allow.</p></li>
+              <li><span>03</span><p>Click <strong>Download the three images</strong>, or choose the three <code>.img</code> files if you already have them.</p></li>
             </ol>
             <div class="connect-row">
               <button class="button button-secondary" id="rom-connect" type="button">Connect TWRP</button>
