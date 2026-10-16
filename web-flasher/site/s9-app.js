@@ -167,7 +167,7 @@ export function initS9(supported) {
   });
   el('rom-info').textContent = s9.release === 'PLACEHOLDER'
     ? 'Image pins are not filled in yet: this section will refuse to flash until site/s9-manifest.js is updated.'
-    : `Build ${s9.release}.`;
+    : `Build ${s9.release}. What changed: ${s9.changes}`;
   const pickRom = files => {
     const list = el('rom-selected');
     try {

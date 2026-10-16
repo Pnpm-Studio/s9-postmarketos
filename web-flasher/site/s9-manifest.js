@@ -15,6 +15,8 @@ export const models = {
     },
     // Section 2: written from TWRP over ADB. `device` paths are the only write targets.
     release: 'v2026.10.16-s9',
+    // Shown under the build number in Section 2; update with each release.
+    changes: 'Wi-Fi works on every S9/S9+ Wi-Fi module (fixes "failed to power up wifi chip"). Flash button now says which step is missing.',
     // CORS-enabled mirror, one folder per release: <mirror><release>/<name>. Tried when the file is not next to the page.
     mirror: 'https://huggingface.co/PhilippLinux/s9-postmarketos/resolve/main/',
     byName: '/dev/block/platform/11120000.ufs/by-name',
@@ -38,6 +40,8 @@ export const models = {
       sha256: 'f674dab0134f3c929982077b6a3a8de7df209a45c76ead80bc009381bcd835e1'
     },
     release: 'v2026.10.16-s9plus',
+    // Shown under the build number in Section 2; update with each release.
+    changes: 'Wi-Fi works on every S9/S9+ Wi-Fi module (fixes "failed to power up wifi chip"). Flash button now says which step is missing.',
     mirror: 'https://huggingface.co/PhilippLinux/s9-postmarketos/resolve/main/',
     byName: '/dev/block/platform/11120000.ufs/by-name',
     images: [
