@@ -81,6 +81,8 @@ function section({ prefix, supported, connect, confirmation, run, doneNote, log 
   flash.addEventListener('click', async () => {
     if (flash.disabled) return;
     st.busy = true; update();
+    // Bring the progress bar and the Activity log into view; they sit below the fold.
+    if (log) progress.scrollIntoView({ behavior: 'smooth', block: 'start' });
     try {
       await run(st.session, st.input, report, assertSession, { consent: risk.checked, confirmation: typed() });
       st.finished = true;
