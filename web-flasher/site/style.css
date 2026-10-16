@@ -254,3 +254,9 @@ progress::-moz-progress-bar { background: var(--teal); }
 .s9-steps { margin-top: 14px; }
 
 .download-button { width: 100%; margin-bottom: 10px; }
+/* Download and file picker side by side; picker input wraps under its label at half width. */
+.file-source { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; }
+.file-source .download-button { height: 100%; margin-bottom: 0; }
+.file-source .file-picker { flex-wrap: wrap; }
+.file-source .file-picker input { width: 100%; max-width: 100%; margin-left: 0; }
+@media (max-width: 560px) { .file-source { grid-template-columns: 1fr; } }

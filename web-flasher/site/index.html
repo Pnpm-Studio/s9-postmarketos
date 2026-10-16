@@ -47,12 +47,14 @@
               <button class="button button-secondary" id="twrp-connect" type="button">Connect Download Mode</button>
               <p id="twrp-status" class="status" role="status" aria-live="polite">Put the phone in Download Mode, then connect.</p>
             </div>
-            <button class="button button-secondary download-button" id="twrp-download" type="button">Download TWRP</button>
-            <label class="file-picker" for="twrp-file">
-              <span class="file-picker-icon" aria-hidden="true">＋</span>
-              <span><strong>Or choose the TWRP .img</strong><small id="twrp-picked">No file selected</small></span>
-              <input id="twrp-file" type="file" accept=".img">
-            </label>
+            <div class="file-source">
+              <button class="button button-secondary download-button" id="twrp-download" type="button">Download TWRP</button>
+              <label class="file-picker" for="twrp-file">
+                <span class="file-picker-icon" aria-hidden="true">＋</span>
+                <span><strong>Or choose the TWRP .img</strong><small id="twrp-picked">No file selected</small></span>
+                <input id="twrp-file" type="file" accept=".img">
+              </label>
+            </div>
             <label class="risk-check" for="twrp-risk"><input id="twrp-risk" type="checkbox"><span>I understand this replaces the recovery partition and that I must boot into TWRP immediately afterwards.</span></label>
             <label class="field-label confirmation-label" for="twrp-confirm">Type <code>FLASH TWRP</code> to confirm</label>
             <input class="confirmation-input" id="twrp-confirm" type="text" placeholder="FLASH TWRP" autocomplete="off" autocapitalize="characters" spellcheck="false">
@@ -78,12 +80,14 @@
               <button class="button button-secondary" id="rom-connect" type="button">Connect TWRP</button>
               <p id="rom-status" class="status" role="status" aria-live="polite">Boot TWRP, then connect.</p>
             </div>
-            <button class="button button-secondary download-button" id="rom-download" type="button">Download the three images (~1.8 GB)</button>
-            <label class="file-picker" for="rom-files">
-              <span class="file-picker-icon" aria-hidden="true">＋</span>
-              <span><strong>Or choose the three .img files</strong><small>Or use files you already have</small></span>
-              <input id="rom-files" type="file" accept=".img" multiple>
-            </label>
+            <div class="file-source">
+              <button class="button button-secondary download-button" id="rom-download" type="button">Download the three images (~1.8 GB)</button>
+              <label class="file-picker" for="rom-files">
+                <span class="file-picker-icon" aria-hidden="true">＋</span>
+                <span><strong>Or choose the three .img files</strong><small>Or use files you already have</small></span>
+                <input id="rom-files" type="file" accept=".img" multiple>
+              </label>
+            </div>
             <ul class="selected-files" id="rom-selected" aria-label="Selected image files"><li class="empty-files">No files selected</li></ul>
             <p class="field-help" id="rom-info"></p>
             <label class="risk-check" for="rom-userdata"><input id="rom-userdata" type="checkbox"><span>Also format USERDATA as ext4 with label <code>s9-srv</code>. <strong>Erases all Android user data. Off by default.</strong></span></label>
