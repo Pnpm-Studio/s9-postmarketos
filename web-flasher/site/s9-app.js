@@ -17,21 +17,32 @@ const message = error => {
 /**
  * One flasher section: connect button, file picker, consent, flash button.
  * @param {{prefix:string, supported:boolean, connect:()=>Promise<{usb:USBDevice|undefined}&Record<string,any>>,
- *   ready:()=>boolean, run:(session:any,input:any,report:(m:string,f:number)=>void,assertSession:()=>void,consent:{consent:boolean,confirmation:string})=>Promise<void>,
+ *   confirmation:string, run:(session:any,input:any,report:(m:string,f:number)=>void,assertSession:()=>void,consent:{consent:boolean,confirmation:string})=>Promise<void>,
  *   doneNote:string, log?:HTMLElement}} config
  */
-function section({ prefix, supported, connect, ready, run, doneNote, log }) {
+function section({ prefix, supported, connect, confirmation, run, doneNote, log }) {
   const connectButton = /** @type {HTMLButtonElement} */ (el(`${prefix}-connect`));
   const flash = /** @type {HTMLButtonElement} */ (el(`${prefix}-flash`));
   const risk = /** @type {HTMLInputElement} */ (el(`${prefix}-risk`));
   const confirm = /** @type {HTMLInputElement} */ (el(`${prefix}-confirm`));
   const status = el(`${prefix}-status`);
   const progress = /** @type {HTMLProgressElement} */ (el(`${prefix}-progress`));
+  const hint = el(`${prefix}-hint`);
   const st = { session: null, usb: null, lost: false, busy: false, finished: false, input: null };
+  // Case and stray spaces don't matter ("flash twrp" counts): desktop keyboards ignore autocapitalize.
+  const typed = () => confirm.value.trim().replace(/\s+/g, ' ').toUpperCase();
 
   const update = () => {
     connectButton.disabled = !supported || st.busy || st.session !== null || st.lost;
-    flash.disabled = !supported || !st.session || st.lost || st.busy || st.finished || !st.input || !ready() || !risk.checked;
+    // Say which step is missing instead of a silently greyed-out button.
+    const missing = !supported ? 'Needs desktop Chrome or Edge (WebUSB).'
+      : st.lost ? 'Reload the page, then connect again.'
+      : !st.session ? 'To enable Flash: connect the phone.'
+      : !st.input ? 'To enable Flash: download or choose the file(s).'
+      : !risk.checked ? 'To enable Flash: tick the warning box.'
+      : typed() !== confirmation ? `To enable Flash: type ${confirmation}.` : '';
+    hint.textContent = st.busy || st.finished ? '' : missing;
+    flash.disabled = st.busy || st.finished || missing !== '';
   };
   const report = (text, fraction = 0) => {
     status.textContent = text;
@@ -71,7 +82,7 @@ function section({ prefix, supported, connect, ready, run, doneNote, log }) {
     if (flash.disabled) return;
     st.busy = true; update();
     try {
-      await run(st.session, st.input, report, assertSession, { consent: risk.checked, confirmation: confirm.value });
+      await run(st.session, st.input, report, assertSession, { consent: risk.checked, confirmation: typed() });
       st.finished = true;
       report(doneNote, 1);
     } catch (error) {
@@ -81,6 +92,7 @@ function section({ prefix, supported, connect, ready, run, doneNote, log }) {
   });
   risk.addEventListener('change', update);
   confirm.addEventListener('input', update);
+  update();
   return { st, update, report, setInput(value) { st.input = value; update(); } };
 }
 
@@ -115,14 +127,13 @@ export function initS9(supported) {
 
   // Section 1: TWRP
   const twrpFile = /** @type {HTMLInputElement} */ (el('twrp-file'));
-  const twrpConfirm = /** @type {HTMLInputElement} */ (el('twrp-confirm'));
   const twrp = section({
     prefix: 'twrp', supported,
     connect: async () => {
       const odin = await connectOdin();
       return Object.assign(odin, { usb: odin.usbDevice });
     },
-    ready: () => twrpConfirm.value === TWRP_CONFIRMATION,
+    confirmation: TWRP_CONFIRMATION,
     run: (odin, file, report, assertSession, consent) => installTwrp(odin, file, consent, report, assertSession),
     doneNote: 'TWRP written. Now hold Vol Down + Power until the screen is black, then immediately hold Vol Up + Bixby + Power until TWRP appears.'
   });
@@ -137,11 +148,9 @@ export function initS9(supported) {
   };
   twrpFile.addEventListener('change', () => pickTwrp([...twrpFile.files ?? []]));
   download('twrp-download', [s9.twrp], twrp.report, pickTwrp);
-  twrpConfirm.addEventListener('input', twrp.update);
 
   // Section 2: postmarketOS images via ADB in TWRP
   const romFiles = /** @type {HTMLInputElement} */ (el('rom-files'));
-  const romConfirm = /** @type {HTMLInputElement} */ (el('rom-confirm'));
   const format = /** @type {HTMLInputElement} */ (el('rom-userdata'));
   const reboot = /** @type {HTMLInputElement} */ (el('rom-reboot'));
   const rom = section({
@@ -150,7 +159,7 @@ export function initS9(supported) {
       const { adb, usb } = await connectAdb();
       return { adb, usb, shell: adbShell(adb) };
     },
-    ready: () => romConfirm.value === ROM_CONFIRMATION,
+    confirmation: ROM_CONFIRMATION,
     run: (session, images, report, assertSession, consent) => installRom(session.shell, images,
       { ...consent, formatUserdata: format.checked, reboot: reboot.checked }, report, assertSession),
     doneNote: 'Done. The images were verified on the phone; first boot and SSH still need checking by hand.',
@@ -178,6 +187,5 @@ export function initS9(supported) {
   };
   romFiles.addEventListener('change', () => pickRom([...romFiles.files ?? []]));
   download('rom-download', s9.images, rom.report, pickRom);
-  romConfirm.addEventListener('input', rom.update);
   return el('s9-panel');
 }
