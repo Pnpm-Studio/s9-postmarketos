@@ -2,8 +2,8 @@
 """Power the phone off when a sensor stays too hot. Brief spikes are ignored. Also chimes on low battery.
 
 Battery sensors (zone:battery, psy:battery) shut down at BATT_MAX; everything else (BIG/LITTLE/G3D/ISP/ac
-zones) at SOC_MAX. "Sustained" = every sample over the limit for HOLD_S seconds. Unplugged at or below LOW_PCT
-it plays `s9-chime low` once, again after recharging above LOW_PCT + 5.
+zones) at SOC_MAX. "Sustained" = every sample over the limit for HOLD_S seconds. Unplugged, it plays `s9-chime low`
+once per step crossed (LOW_PCT, then 20/15/10 below it); re-armed after recharging above LOW_PCT + 5.
 Status for dashboards: /run/thermal-guard.status; events survive reboots in /var/log/thermal-guard.log
 """
 import glob, json, os, subprocess, sys, time
@@ -11,7 +11,8 @@ import glob, json, os, subprocess, sys, time
 BATT_MAX = float(os.environ.get("BATT_MAX", 55))   # °C; Li-ion should never sit above ~60
 SOC_MAX = float(os.environ.get("SOC_MAX", 100))    # °C; kernel's own CPU critical trip is 110
 HOLD_S = float(os.environ.get("HOLD_S", 60))
-LOW_PCT = float(os.environ.get("LOW_PCT", 15))     # %; 0 = no low-battery chime
+LOW_PCT = float(os.environ.get("LOW_PCT", 30))     # %; first low-battery chime, 0 = none
+LOW_STEPS = (20, 15, 10)                           # further chimes, those below LOW_PCT
 LIMITS = "/var/lib/thermal-guard/limits.json"  # {"batt_max","soc_max","hold_s","low_pct"}, set on the phone UI; overrides env
 RANGES = {"BATT_MAX": ("batt_max", 40, 65), "SOC_MAX": ("soc_max", 70, 110), "HOLD_S": ("hold_s", 10, 300),
           "LOW_PCT": ("low_pct", 0, 50)}
@@ -86,13 +87,15 @@ def chime(sound="alert"):
         pass
 
 
-def low_battery(armed, pct, charging):
-    """(armed, chime now?): fire once when unplugged at or below LOW_PCT, re-arm above LOW_PCT + 5 or when charging."""
-    if pct is None or not LOW_PCT:
-        return armed, False
-    if charging or pct > LOW_PCT + 5:
-        return True, False
-    return (False, True) if armed and pct <= LOW_PCT else (armed, False)
+def low_battery(last, pct, charging):
+    """(last step chimed or None, chime now?): fire once per step crossed while unplugged, re-arm above LOW_PCT + 5.
+    Charging alone doesn't re-arm: a flapping charger status re-chimed the same % every minute."""
+    if pct is None or not LOW_PCT or pct > LOW_PCT + 5:
+        return None, False
+    step = min((s for s in (LOW_PCT, *LOW_STEPS) if s <= LOW_PCT and pct <= s), default=None)
+    if charging or step is None or (last is not None and step >= last):
+        return last, False
+    return step, True
 
 
 def battery():
@@ -113,7 +116,7 @@ def shutdown(why):
 
 
 def main():
-    since, armed = {}, True
+    since, armed = {}, None
     load_limits()
     print(f"watching {len(sensors())} sensors: battery {BATT_MAX} °C, soc {SOC_MAX} °C, sustained {HOLD_S:.0f} s, "
           f"low battery {LOW_PCT:.0f} %", flush=True)
@@ -154,18 +157,25 @@ if __name__ == "__main__":
         s, over = update(s, {"psy:battery": 57}, 100)
         assert s == {"psy:battery": 100} and not over
         assert limit("zone:battery") == BATT_MAX and limit("zone:G3D") == SOC_MAX and limit("zone:ac") == SOC_MAX
-        a, low = low_battery(True, 15, False)
-        assert not a and low                                              # fires once ...
-        assert low_battery(a, 10, False) == (False, False)                # ... not again while it drains
-        assert low_battery(a, 18, False) == (False, False)                # no re-arm inside the hysteresis
-        assert low_battery(a, 12, True) == (True, False)                  # plugged in: re-armed
-        assert low_battery(True, 50, False) == (True, False) and low_battery(True, None, False) == (True, False)
+        a, low = low_battery(None, 30, False)
+        assert a == 30 and low                                            # fires at 30 ...
+        assert low_battery(a, 25, False) == (30, False)                   # ... not again before the next step
+        a, low = low_battery(a, 20, False)
+        assert a == 20 and low
+        assert low_battery(a, 20, True) == (20, False)                    # charging: silent, not re-armed
+        assert low_battery(a, 32, False) == (20, False)                   # no re-arm inside the hysteresis
+        assert low_battery(None, 12, False) == (15, True)                 # boot at 12 %: one chime, then 10
+        assert low_battery(15, 13, False) == (15, False) and low_battery(15, 10, False) == (10, True)
+        assert low_battery(10, 3, False) == (10, False)
+        assert low_battery(10, 36, False) == (None, False) and low_battery(None, None, False) == (None, False)
         import tempfile
         f = tempfile.mktemp()
         open(f, "w").write('{"batt_max": 99, "soc_max": "x", "hold_s": 30, "low_pct": 0}')
         load_limits(f)
         assert (BATT_MAX, SOC_MAX, HOLD_S, LOW_PCT) == (65.0, 100, 30.0, 0.0)
-        assert low_battery(True, 1, False) == (True, False)               # 0 = off
+        assert low_battery(None, 1, False) == (None, False)               # 0 = off
+        LOW_PCT = 15
+        assert low_battery(None, 18, False) == (None, False) and low_battery(None, 15, False) == (15, True)
         print("ok", sensors() if os.path.exists("/sys/class/thermal") else "")
     else:
         main()

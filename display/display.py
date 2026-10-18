@@ -90,7 +90,7 @@ TG_CONF = Path('/var/lib/thermal-guard/limits.json')   # re-read by thermal-guar
 TG_STATUS, TG_BOX = Path('/run/thermal-guard.status'), (30, 1940, 1050, 2030)
 TG_PAGE_ROWS = 3   # low_pct (last) is set on the Network > Audio page
 TG_LIMITS = (('batt_max', 'Battery max', ' °C', 1, 40, 65, 55), ('soc_max', 'SoC max (CPU/GPU/board)', ' °C', 5, 70, 110, 100),
-             ('hold_s', 'Hold time', ' s', 10, 10, 300, 60), ('low_pct', 'Low-battery chime (0 = off)', ' %', 5, 0, 50, 15))
+             ('hold_s', 'Hold time', ' s', 10, 10, 300, 60), ('low_pct', 'Low-battery chimes from (0 = off)', ' %', 5, 0, 50, 30))
 PERF_ROWS = (('policy0', 'max', 'Little', 'max'), ('policy0', 'min', 'Little', 'min'),        # (key, which, group, label)
              ('policy4', 'max', 'Big', 'max'), ('policy4', 'min', 'Big', 'min'), ('quad', 'max', 'Big', '4-core cap'),
              ('trip', 'max', 'Big', 'throttle at'),
@@ -3090,6 +3090,7 @@ class Display:
 
 VT_UI, CONSOLE_FONT = 7, '/usr/share/consolefonts/ter-132b.psf.gz'
 MODES = ('tty', 'ui', 'off')       # power key cycles: text console (tty1 + buffyboard) > dashboard > screen off
+SLEEP_S = 30                       # no touch or key this long: screen off
 
 
 def chvt(n):
@@ -3768,11 +3769,11 @@ def selftest():
     AUDIO_CONF.unlink(); AUDIO_CONF, sh = old_audio, old_sh
     # Thermal guard page: step writes limits.json atomically, Back returns
     old_tg, TG_CONF = TG_CONF, Path(tempfile.mkdtemp()) / 'limits.json'   # fresh dir: a root-owned leftover broke a fixed path
-    assert tg_conf() == {'batt_max': 55, 'soc_max': 100, 'hold_s': 60, 'low_pct': 15}
+    assert tg_conf() == {'batt_max': 55, 'soc_max': 100, 'hold_s': 60, 'low_pct': 30}
     ui.go(3)
     assert ui.render(data, False, 0).size == IMG and ui.on_gesture(('tap', 500, 1985), data, 0) and ui.tg and ui.render(data, False, 0).size == IMG
     ui.on_gesture(('tap', 920, 330), data, 0); ui.on_gesture(('tap', 160, 930), data, 0)
-    assert json.loads(TG_CONF.read_text()) == {'batt_max': 56, 'soc_max': 100, 'hold_s': 50, 'low_pct': 15}
+    assert json.loads(TG_CONF.read_text()) == {'batt_max': 56, 'soc_max': 100, 'hold_s': 50, 'low_pct': 30}
     ui.on_gesture(('tap', 100, 70), data, 0)
     assert not ui.tg
     TG_CONF.unlink(); TG_CONF.parent.rmdir(); TG_CONF = old_tg
@@ -3975,7 +3976,7 @@ def main():
             display.prev = None
 
     def set_mode(m):
-        nonlocal mode, kb, dirty
+        nonlocal mode, kb, dirty, next_fetch, last_input
         if m != 'ui':
             stop_osk()
         if kb and m != 'tty':       # buffyboard reads the touchscreen too: only run it on the console
@@ -3991,13 +3992,15 @@ def main():
             show_vt(1 if m == 'tty' else VT_UI)
             if m == 'tty' and kb is None:
                 kb = subprocess.Popen(['buffyboard'])
-        mode, dirty = m, m == 'ui'
+        mode, dirty, last_input = m, m == 'ui', time.monotonic()
+        if m == 'ui':
+            next_fetch = 0.0        # data is only polled while the dashboard is on screen: refresh now
         logging.info('mode %s', m)
 
     set_mode('tty')
     while not stop:
         now = time.monotonic()
-        if fut is None and now >= next_fetch:
+        if fut is None and now >= next_fetch and mode == 'ui':
             fut = pool.submit(fetch)
         if fut and fut.done():
             try:
@@ -4015,7 +4018,9 @@ def main():
         if osk and osk_fd is None and (path := find_event('buffyboard')):
             osk_fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
         fds = [f for f in (key_fd, touch_fd, term_fd, kmsg_fd, osk_fd) if f is not None]
-        for f in select.select(fds, [], [], 0.025 if ui.term_coast or ui.press_off else 0.1)[0]:
+        for f in select.select(fds, [], [], 1 if mode == 'off' else 0.025 if ui.term_coast or ui.press_off else 0.1)[0]:
+            if f in (key_fd, touch_fd, osk_fd):
+                last_input = now
             if f == term_fd:
                 dirty |= ui.term.read() and ui.page == TERM_PAGE
                 continue
@@ -4044,6 +4049,8 @@ def main():
                                 set_mode('tty')
                         elif mode == 'ui':
                             dirty |= ui.on_gesture(g, data, now)
+        if mode != 'off' and now - last_input >= SLEEP_S:
+            set_mode('off')
         if touch and mode == 'ui':
             for g in touch.tick(now):
                 dirty |= ui.on_gesture(g, data, now)
@@ -4061,7 +4068,7 @@ def main():
             ok, msg = afut.result()
             logging.info('docker action: %s %s', ok, msg)
             ui.toast, afut, next_detail, next_fetch, dirty = (msg, now + 4), None, 0.0, 0.0, True
-        if ui.dk and ui.page == DOCK_PAGE and dfut is None and now >= next_detail:
+        if ui.dk and ui.page == DOCK_PAGE and mode == 'ui' and dfut is None and now >= next_detail:
             dfut = dpool.submit(container_detail, ui.dk)
         if dfut and dfut.done():
             info, dfut, next_detail = dfut.result(), None, now + 5
